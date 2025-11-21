@@ -12,7 +12,7 @@ import (
 
 const SessionCookie = "session"
 
-func Session(rc gatekeeper, r *http.Request) (auth.Actor, error) {
+func Session(rc auth.Identifier, r *http.Request) (auth.Actor, error) {
 	session, err := session(r)
 	if err != nil {
 		return auth.NewUnlogged(), nil
@@ -27,10 +27,6 @@ func Session(rc gatekeeper, r *http.Request) (auth.Actor, error) {
 	}
 
 	return act, err
-}
-
-type gatekeeper interface {
-	Actor(session uuid.UUID) (auth.Actor, error)
 }
 
 func session(r *http.Request) (uuid.UUID, error) {

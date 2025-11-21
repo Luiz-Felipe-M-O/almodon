@@ -89,7 +89,7 @@ func DecodeJSON(req any, r *http.Request) error {
 			return xerrors.ErrJsonSyntax.New(0)
 		}
 
-		return err
+		return xerrors.ErrJson.New(err.Error(), nil)
 	}
 
 	return nil

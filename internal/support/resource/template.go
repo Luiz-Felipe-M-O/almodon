@@ -6,7 +6,7 @@ import (
 	"github.com/alan-b-lima/almodon/internal/auth"
 )
 
-func GetHandler[TRes any](gk gatekeeper, proc func(auth.Actor) (TRes, error), w http.ResponseWriter, r *http.Request) {
+func GetHandler[TRes any](gk auth.Identifier, proc func(auth.Actor) (TRes, error), w http.ResponseWriter, r *http.Request) {
 	act, err := Session(gk, r)
 	if err != nil {
 		WriteError(w, err)
@@ -25,7 +25,7 @@ func GetHandler[TRes any](gk gatekeeper, proc func(auth.Actor) (TRes, error), w 
 	}
 }
 
-func PostHandler[TRes, TReq any](gk gatekeeper, proc func(act auth.Actor, req TReq) (TRes, error), w http.ResponseWriter, r *http.Request) {
+func PostHandler[TRes, TReq any](gk auth.Identifier, proc func(act auth.Actor, req TReq) (TRes, error), w http.ResponseWriter, r *http.Request) {
 	act, err := Session(gk, r)
 	if err != nil {
 		WriteError(w, err)
@@ -50,7 +50,7 @@ func PostHandler[TRes, TReq any](gk gatekeeper, proc func(act auth.Actor, req TR
 	}
 }
 
-func PutHandler[TReq any](gk gatekeeper, proc func(act auth.Actor, req TReq) error, w http.ResponseWriter, r *http.Request) {
+func PutHandler[TReq any](gk auth.Identifier, proc func(act auth.Actor, req TReq) error, w http.ResponseWriter, r *http.Request) {
 	act, err := Session(gk, r)
 	if err != nil {
 		WriteError(w, err)
@@ -71,8 +71,8 @@ func PutHandler[TReq any](gk gatekeeper, proc func(act auth.Actor, req TReq) err
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func DeleteHandler(gk gatekeeper, proc func(act auth.Actor) error, w http.ResponseWriter, r *http.Request) {
-	act, err := Session(gk, r)
+func DeleteHandler(auth auth.Identifier, proc func(act auth.Actor) error, w http.ResponseWriter, r *http.Request) {
+	act, err := Session(auth, r)
 	if err != nil {
 		WriteError(w, err)
 		return

@@ -15,6 +15,7 @@ var (
 	ErrUnsupportedContentTypeJson = errors.New(errors.PreconditionFailed, "unsupported-content-type", "content type must be application/json", nil)
 	ErrJsonSyntax                 = errors.Fmt(errors.InvalidInput, "json-syntax-error", "JSON syntax error at %d")
 	ErrJsonType                   = errors.Fmt(errors.InvalidInput, "json-type-error", "JSON type error at %d, expected %v but got %v")
+	ErrJson                       = errors.Gen(errors.InvalidInput, "json-error")
 	ErrNotAcceptableJson          = errors.New(errors.PreconditionFailed, "not-acceptable-type", "client does not accept application/json", nil)
 )
 

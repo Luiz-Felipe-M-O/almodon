@@ -1,5 +1,8 @@
 package auth
 
+import 	"errors"
+
+
 // Role represents a user role in the system.
 type Role uint8
 
@@ -22,6 +25,8 @@ const (
 	User
 
 	valid_end // exclusive, for validity checks
+
+	invalid // sentinel value
 )
 
 // Hierarchy defines a partial ordering over the Role type.
@@ -47,6 +52,28 @@ func (l Role) IsValidOrUnlogged() bool {
 // String returns the string representation of the Role.
 func (l Role) String() string {
 	return roleStrings[l]
+}
+
+func (l Role) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + l.String() + `"`), nil
+}
+
+var ErrBadJSONString = errors.New("cannot unmarshal non-string into Go value of type auth.Role")
+
+func (l *Role) UnmarshalJSON(data []byte) error {
+	str := string(data)
+	if len(str) < 2 || str[0] != '"' || str[len(str)-1] != '"' {
+		return ErrBadJSONString
+	}
+
+	role, ok := FromString(str[1 : len(str)-1])
+	if !ok {
+		*l = invalid
+		return nil
+	}
+
+	*l = role
+	return nil
 }
 
 // DefaultHierarchy defines a partial ordering in the Role type.
