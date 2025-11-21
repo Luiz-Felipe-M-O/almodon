@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/alan-b-lima/almodon/internal/api/v1"
-	"github.com/alan-b-lima/almodon/internal/middleware"
+	"github.com/alan-b-lima/almodon/internal/support/middleware"
 
 	"github.com/alan-b-lima/ansi-escape-sequences"
 )
