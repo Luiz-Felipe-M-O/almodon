@@ -8,16 +8,21 @@ import (
 	"strconv"
 )
 
+var (
+	errNotPointer  = errors.New("query: v must be a pointer type")
+	errNotToStruct = errors.New("query: v must be a pointer type")
+	errUnsettable  = errors.New("query: cannot change contents of v")
+)
+
 func QueryParams(q url.Values, v any) error {
 	rt := reflect.ValueOf(v)
 
 	if rt.Kind() != reflect.Pointer {
-		return errors.New("query: v must be a pointer type")
+		return errNotPointer
 	}
 
-	st := rt.Elem()
-	if st.Kind() != reflect.Struct {
-		return errors.New("query: v must point to a struct type")
+	if rt.Elem().Kind() != reflect.Struct {
+		return errNotToStruct
 	}
 
 	return queryParams(q, v)
@@ -28,7 +33,7 @@ func queryParams(q url.Values, v any) error {
 	rv := reflect.ValueOf(v).Elem()
 
 	if !rv.CanSet() {
-		return errors.New("query: cannot change contents of v")
+		return errUnsettable
 	}
 
 	for i := range rt.NumField() {
