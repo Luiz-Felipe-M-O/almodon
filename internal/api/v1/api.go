@@ -1,72 +1,78 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 
 	promotionrepo "github.com/alan-b-lima/almodon/internal/domain/promotion/repository"
+	promotions "github.com/alan-b-lima/almodon/internal/domain/promotion/resource"
+	promotionserve "github.com/alan-b-lima/almodon/internal/domain/promotion/service"
 	sessionrepo "github.com/alan-b-lima/almodon/internal/domain/session/repository"
+	sessionserve "github.com/alan-b-lima/almodon/internal/domain/session/service"
 	userrepo "github.com/alan-b-lima/almodon/internal/domain/user/repository"
 	users "github.com/alan-b-lima/almodon/internal/domain/user/resource"
 	userserve "github.com/alan-b-lima/almodon/internal/domain/user/service"
+	"github.com/alan-b-lima/almodon/pkg/closer"
 )
 
 type Handler struct {
 	http.ServeMux
-	cleanup []closer
+	cleanup closer.Bundle
 }
 
 func New() (*Handler, error) {
-	var r Handler
+	var h Handler
 
 	var (
-		repoPromotions = promotionrepo.NewMap()
-		repoSessions   = sessionrepo.NewMap()
-		repoUsers      = userrepo.NewMap()
+		RepoPromotions          = promotionrepo.NewMap()
+		RepoSessions            = sessionrepo.NewMap()
+		RepoUsers, errRepoUsers = userrepo.NewPersistantMap("../.data/users.json")
+	)
+	if errRepoUsers != nil {
+		return nil, errRepoUsers
+	}
+
+	var (
+		CorePromotions = &promotionserve.Core{RepoPromotions, nil}
+		CoreSessions   = &sessionserve.Core{RepoSessions}
+		CoreUsers      = &userserve.Core{RepoUsers, CoreSessions, CorePromotions}
+	)
+	CorePromotions.Users = CoreUsers
+
+	var (
+		ServicePromotions = promotionserve.New(CorePromotions)
+		ServiceUsers      = userserve.New(CoreUsers)
 	)
 
-	serveUsers := userserve.NewService(repoUsers, repoSessions, repoPromotions)
-
-	authServeUsers := userserve.New(serveUsers)
-
-	users := users.New(authServeUsers)
+	var (
+		promotions = promotions.New(ServicePromotions, ServiceUsers)
+		users      = users.New(ServiceUsers)
+	)
 
 	resources := map[string]http.Handler{
-		"users": users,
+		"promotions": promotions,
+		"users":      users,
 	}
 
 	for name, handler := range resources {
-		r.Handle("/api/v1/"+name+"/", http.StripPrefix("/api/v1", handler))
+		h.Handle("/api/v1/"+name+"/", http.StripPrefix("/api/v1", handler))
 	}
 
-	r.attach(repoPromotions)
-	r.attach(repoSessions)
-	r.attach(repoUsers)
-	r.attach(serveUsers)
-	r.attach(authServeUsers)
-	r.attach(users)
+	h.cleanup.BundleMany(
+		RepoPromotions,
+		RepoSessions,
+		errRepoUsers,
+		CorePromotions,
+		CoreSessions,
+		CoreUsers,
+		ServicePromotions,
+		ServiceUsers,
+		promotions,
+		users,
+	)
 
-	return &r, nil
+	return &h, nil
 }
 
 func (h *Handler) Close() error {
-	errs := make([]error, 0, len(h.cleanup))
-
-	for _, closer := range h.cleanup {
-		errs = append(errs, closer.Close())
-	}
-
-	return errors.Join(errs...)
-}
-
-type closer interface{ Close() error }
-
-func (h *Handler) attach(a any) bool {
-	closer, ok := a.(closer)
-	if !ok {
-		return false
-	}
-
-	h.cleanup = append(h.cleanup, closer)
-	return true
+	return h.cleanup.Close()
 }
