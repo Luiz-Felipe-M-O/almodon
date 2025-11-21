@@ -18,4 +18,4 @@ var (
 	ErrNotAcceptableJson          = errors.New(errors.PreconditionFailed, "not-acceptable-type", "client does not accept application/json", nil)
 )
 
-var ErrTODO = errors.New(errors.Internal, "todo", "implement me", nil)
+var ErrTODO = errors.New(errors.Unimplemented, "todo", "implement me", nil)

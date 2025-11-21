@@ -111,12 +111,12 @@ const (
 	// Rough HTTP equivalent: 400 Bad Request.
 	InvalidInput
 
-	// Unauthorized indicates that authentication is required or credentials
+	// Unauthentic indicates that authentication is required or credentials
 	// are missing/invalid. Use this when the client must authenticate before
 	// accessing the resource.
 	//
 	// Rough HTTP equivalent: 401 Unauthorized.
-	Unauthorized
+	Unauthentic
 
 	// Forbidden means the client is authenticated but does not have permission
 	// to perform the requested operation. Use this for authorization failures.
@@ -160,6 +160,12 @@ const (
 	// Rough HTTP equivalent: 500 Internal Server Error.
 	Internal
 
+	// Unimplemented indicates that the requested functionality is not
+	// implemented. Use this when a feature is not yet supported.
+	//
+	// Rough HTTP equivalent: 501 Not Implemented.
+	Unimplemented
+
 	// Unavailable indicates that the service is currently unavailable. Use
 	// this when the server is overloaded or down for maintenance.
 	//
@@ -178,16 +184,17 @@ const (
 
 var kindStrings = map[Kind]string{
 	InvalidInput:       "invalid input",
-	Unauthorized:       "unauthorized",
+	Unauthentic:        "unauthorized",
 	Forbidden:          "forbidden",
 	PreconditionFailed: "precondition failed",
 	NotFound:           "not found",
 	Conflict:           "conflict",
 	Timeout:            "timeout",
 
-	Internal:    "internal error",
-	Unavailable: "unavailable",
-	BadGateway:  "bad gateway",
+	Internal:      "internal error",
+	Unimplemented: "unimplemented",
+	Unavailable:   "unavailable",
+	BadGateway:    "bad gateway",
 }
 
 var stringKinds = invert(kindStrings)

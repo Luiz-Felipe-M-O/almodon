@@ -13,10 +13,10 @@ var (
 	ErrPasswordIllegalCharacters     = errors.New(errors.InvalidInput, "password-illegal-chars", "password must not contain unprintable or invalid uft-8 characters", nil)
 	ErrRoleInvalid                   = errors.Fmt(errors.InvalidInput, "role-invalid", "role must be one of %v")
 
-	ErrIncorrectPassword    = errors.New(errors.Unauthorized, "incorrect-password", "given password is incorrect", nil)
+	ErrIncorrectPassword    = errors.New(errors.Unauthentic, "incorrect-password", "given password is incorrect", nil)
 	ErrFailedToHashPassword = errors.Imp(errors.Internal, "hash-failure", "failed to hash the password")
 
-	ErrUnauthenticatedUser = errors.Imp(errors.Unauthorized, "unauthenticated-user", "user is not logged in")
+	ErrUnauthenticatedUser = errors.Imp(errors.Unauthentic, "unauthenticated-user", "user is not logged in")
 	ErrUnauthorizedUser    = errors.Fmt(errors.Forbidden, "unauthorized-user", "auth role %v does not match any criteria in %v")
 
 	ErrUserNotFound    = errors.New(errors.NotFound, "user-not-found", "user not found", nil)
