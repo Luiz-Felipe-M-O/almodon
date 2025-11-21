@@ -6,23 +6,19 @@ import (
 )
 
 type Service interface {
-	List(act auth.Actor, req ListRequest) (ListResponse, error)
+	List(req ListParams) (Entities, error)
 
-	Get(act auth.Actor, req GetRequest) (Response, error)
-	GetBySIAPE(act auth.Actor, req GetBySIAPERequest) (Response, error)
+	Get(uuid uuid.UUID) (Entity, error)
+	GetBySIAPE(siape int) (Entity, error)
 
-	Create(act auth.Actor, req CreateRequest) (uuid.UUID, error)
+	Create(req Create) (uuid.UUID, error)
 
-	Patch(act auth.Actor, req PatchRequest) error
-	UpdatePassword(act auth.Actor, req UpdatePasswordRequest) error
-	UpdateRole(act auth.Actor, req UpdateRoleRequest) error
+	Patch(uuid uuid.UUID, req Patch) error
+	UpdatePassword(uuid uuid.UUID, req UpdatePassword) error
+	UpdateRole(uuid uuid.UUID, req UpdateRole) error
 
-	Delete(act auth.Actor, req DeleteRequest) error
+	Delete(uuid uuid.UUID) error
 
-	Authenticate(req AuthRequest) (AuthResponse, error)
-	Gatekeeper
-}
-
-type Gatekeeper interface {
+	Authenticate(siape int, password string) (AuthEntity, error)
 	Actor(session uuid.UUID) (auth.Actor, error)
 }

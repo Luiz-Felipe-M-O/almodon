@@ -17,11 +17,11 @@ func TestProcessEmail(t *testing.T) {
 	tests := []Tests{
 		{"usuario@almodon.com", false},
 		{"nome.sobrenome@dominio.br", false},
-		{"", true},                   
-		{"usuarioalmodon.com", true}, 
-		{"usuario@", true},           
-		{"@almodon.com", true},      
-		{"usuario@.com", true},       
+		{"", true},
+		{"usuarioalmodon.com", true},
+		{"usuario@", true},
+		{"@almodon.com", true},
+		{"usuario@.com", true},
 	}
 
 	for _, test := range tests {
@@ -47,13 +47,13 @@ func TestProcessPassword(t *testing.T) {
 
 	tests := []Tests{
 		{"SenhaForte123!", false},
-		{"12345678", false}, 
-		{"1234567", true},   
-		{longPass, true},    
-		{" 12345678", true}, 
-		{"12345678 ", true}, 
-		{"", true},          
-		{"Senha" + string(rune(0)) + "123", true}, 
+		{"12345678", false},
+		{"1234567", true},
+		{longPass, true},
+		{" 12345678", true},
+		{"12345678 ", true},
+		{"", true},
+		{"Senha" + string(rune(0)) + "123", true},
 	}
 
 	for _, test := range tests {
