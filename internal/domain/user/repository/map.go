@@ -241,13 +241,8 @@ type entity struct {
 	Name     string    `json:"name"`
 	Email    string    `json:"email"`
 	Password pwd       `json:"password"`
-	Role     role      `json:"role"`
+	Role     auth.Role `json:"role"`
 }
-
-type (
-	pwd  [60]byte
-	role auth.Role
-)
 
 func json_for_entity(entities []user.Entity) []entity {
 	return unsafe.Slice((*entity)(unsafe.Pointer(unsafe.SliceData(entities))), len(entities))
@@ -257,21 +252,13 @@ func entity_from_json(entities []entity) []user.Entity {
 	return unsafe.Slice((*user.Entity)(unsafe.Pointer(unsafe.SliceData(entities))), len(entities))
 }
 
+type pwd [60]byte
+
 func (v pwd) MarshalJSON() ([]byte, error) {
 	return fmt.Appendf(nil, "%+q", v[:]), nil
 }
 
 func (v *pwd) UnmarshalJSON(buf []byte) error {
 	*v = pwd(buf[1 : len(buf)-1])
-	return nil
-}
-
-func (v role) MarshalJSON() ([]byte, error) {
-	return fmt.Appendf(nil, "%+q", auth.Role(v).String()), nil
-}
-
-func (v *role) UnmarshalJSON(buf []byte) error {
-	r, _ := auth.FromString(string(buf[1 : len(buf)-1]))
-	*v = role(r)
 	return nil
 }

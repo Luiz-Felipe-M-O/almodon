@@ -49,8 +49,14 @@ func (m *Map) List(offset int, limit int) (promotion.Entities, error) {
 		}, nil
 	}
 
-	res := make([]promotion.Entity, hi-lo)
-	copy(res, m.repo[lo:hi])
+	res := make([]promotion.Entity, 0, hi-lo)
+	slice := m.repo[lo:]
+
+	for i := 0; i < len(slice) && i < hi; i++ {
+		if !time.Now().After(slice[i].Expires) {
+			res = append(res, slice[i])
+		}
+	}
 
 	return promotion.Entities{
 		Offset:       lo,
@@ -71,7 +77,6 @@ func (m *Map) Get(uuid uuid.UUID) (promotion.Entity, error) {
 
 	s := m.repo[index]
 	if time.Now().After(s.Expires) {
-		m.delete(s.UUID)
 		return promotion.Entity{}, xerrors.ErrPromotionNotFound
 	}
 
