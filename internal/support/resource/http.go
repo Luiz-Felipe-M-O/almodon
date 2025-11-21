@@ -12,20 +12,20 @@ import (
 	"github.com/alan-b-lima/almodon/pkg/errors"
 )
 
-func WriteJsonError(w http.ResponseWriter, err error) {
+func WriteError(w http.ResponseWriter, err error) {
 	if err == nil {
 		return
 	}
 
 	if err, ok := errors.AsType[*errors.Error](err); ok {
-		writeJsonError(w, err, toHTTPStatus(err.Kind))
+		writeErrorJson(w, err, toHTTPStatus(err.Kind))
 		return
 	}
 
-	writeJsonError(w, err, http.StatusInternalServerError)
+	writeErrorJson(w, err, http.StatusInternalServerError)
 }
 
-func writeJsonError(w http.ResponseWriter, err error, status int) {
+func writeErrorJson(w http.ResponseWriter, err error, status int) {
 	body, e := json.Marshal(err)
 	if e != nil {
 		http.Error(w, e.Error(), http.StatusInternalServerError)
@@ -39,16 +39,17 @@ func writeJsonError(w http.ResponseWriter, err error, status int) {
 
 var statusCodes = map[errors.Kind]int{
 	errors.InvalidInput:       http.StatusBadRequest,
-	errors.Unauthorized:       http.StatusUnauthorized,
+	errors.Unauthentic:        http.StatusUnauthorized,
 	errors.Forbidden:          http.StatusForbidden,
 	errors.PreconditionFailed: http.StatusPreconditionFailed,
 	errors.NotFound:           http.StatusNotFound,
 	errors.Conflict:           http.StatusConflict,
 	errors.Timeout:            http.StatusRequestTimeout,
 
-	errors.Internal:    http.StatusInternalServerError,
-	errors.Unavailable: http.StatusServiceUnavailable,
-	errors.BadGateway:  http.StatusBadGateway,
+	errors.Internal:      http.StatusInternalServerError,
+	errors.Unimplemented: http.StatusNotImplemented,
+	errors.Unavailable:   http.StatusServiceUnavailable,
+	errors.BadGateway:    http.StatusBadGateway,
 }
 
 func toHTTPStatus(kind errors.Kind) int {
@@ -84,6 +85,10 @@ func DecodeJSON(req any, r *http.Request) error {
 
 		}
 
+		if err == io.EOF {
+			return xerrors.ErrJsonSyntax.New(0)
+		}
+
 		return err
 	}
 
@@ -117,5 +122,5 @@ func EncodeJSON(res any, status int, w http.ResponseWriter, r *http.Request) err
 }
 
 func NotFound(w http.ResponseWriter, r *http.Request) {
-	WriteJsonError(w, xerrors.ErrResourceNotFound.New(r.URL.Path))
+	WriteError(w, xerrors.ErrResourceNotFound.New(r.URL.Path))
 }
