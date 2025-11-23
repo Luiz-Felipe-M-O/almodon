@@ -1,0 +1,22 @@
+{
+    "name": "Almodon",
+    "description": "Almodon - Gestão Interna do Almoxarifado da Odontologia",
+    "author": "The Almodon Team",
+    "start_url": "/dist",
+    "display": "fullscreen",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "./assets/icon.png",
+            "sizes": "192x192"
+        },
+        {
+            "src": "./assets/icon.png",
+            "sizes": "512x512"
+        }
+    ],
+    "background_color": "#ffffff",
+    "prefer_related_applications": false,
+    "manifest_version": 3,
+    "version": "0.0.1"
+}

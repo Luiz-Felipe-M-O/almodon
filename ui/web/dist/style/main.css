@@ -1,0 +1,341 @@
+@import url(https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900);
+
+* {
+    font: inherit;
+    color: inherit;
+
+    margin: 0;
+    padding: 0;
+    border: none;
+    outline: none;
+    box-sizing: border-box;
+
+    scroll-behavior: smooth;
+    /* outline: 1px dashed #f007; */
+    line-height: 1.5;
+}
+
+[tabindex]:focus {
+    outline: 2px solid var(--primary);
+}
+
+:root {
+    --size-larger: 1.5rem;
+    --size-large: 1.25rem;
+    --size-normal: 1rem;
+    --size-small: 0.75rem;
+    --size-smaller: 0.625rem;
+
+    --undefined: #f0f;
+
+    --darker: #130303;
+    --dark: #373942;
+    --neutral: #5c5d5e;
+    --lightish: #9ea1a3;
+    --light: #eef1f3;
+    --lighter: #fbfdff;
+
+    --primary: #58b6df;
+    --secondary: #9cd2be;
+    --tertiary: #becfd6;
+    --accent: #58df7c;
+    --intense: var(--undefined);
+
+    --primary-filter: brightness(0) saturate(100%) invert(63%) sepia(67%) saturate(361%) hue-rotate(155deg) brightness(92%) contrast(90%);
+
+    --error: #e55a5a;
+    --warn: #e5e35a;
+
+    --border: 1px solid transparent;
+    --border-no-color: 1px solid;
+
+    --radius-square: .5rem;
+    --radius-round: 1rem;
+    --radius-pill: 20rem;
+
+    --transition: 100ms ease-in-out;
+}
+
+html {
+    background-color: var(--light);
+    color: var(--darker);
+    font-family: "Roboto", Arial, sans-serif;
+    font-size: var(--font-normal);
+    color-scheme: light;
+}
+
+.scrollable {
+    scrollbar-width: thin;
+    scrollbar-color: var(--lightish) transparent;
+}
+
+.icon {
+    display: block;
+    height: 1.5rem;
+}
+
+.soft-button {
+    & {
+        border-radius: var(--radius-square);
+        border: var(--border);
+        cursor: pointer;
+    }
+
+    &:hover {
+        border: var(--border-no-color) var(--primary);
+    }
+
+    &:active {
+        background-color: var(--light);
+        color: var(--primary);
+    }
+}
+
+.root {
+    & {
+        display: grid;
+        height: 100dvh;
+        grid-template-areas: "sidebar main";
+        grid-template-columns: auto 1fr;
+    }
+
+    #sidebar {
+        & {
+            display: grid;
+            grid-area: sidebar;
+            grid-template-rows: auto 1fr auto;
+            background-color: var(--lighter);
+            overflow: hidden;
+        }
+
+        #header {
+            & {
+                padding: .5rem;
+            }
+
+            .brand {
+                display: flex;
+                justify-content: center;
+            }
+
+            .brand .logo {
+                height: 2.5rem;
+            }
+        }
+
+        #nav {
+
+            display: flex;
+            overflow: auto;
+            flex-direction: column;
+            padding: .5rem;
+            gap: .5rem;
+        }
+
+        .option {
+            & {
+                display: grid;
+                justify-items: center;
+                font-size: var(--size-small);
+                text-align: center;
+                scroll-margin: 1rem;
+                line-height: 1;
+                padding: .5rem;
+            }
+
+            &:is(:active, .selected) .icon {
+                filter: var(--primary-filter);
+            }
+
+            &.selected {
+                border-color: var(--primary);
+                background-color: var(--light);
+                color: var(--primary);
+            }
+
+            &.profile {
+                display: none;
+            }
+        }
+
+
+        .menu {
+            & {
+                padding: .5rem;
+            }
+
+            .profile {
+                display: grid;
+                justify-items: center;
+                font-size: var(--size-small);
+                padding: .5rem;
+            }
+
+            .profile:active .icon {
+                filter: var(--primary-filter);
+            }
+        }
+    }
+
+    #main {
+        display: flex;
+        flex-direction: column;
+        overflow: auto;
+        grid-area: main;
+        padding: 1rem 2rem;
+        gap: 2rem;
+    }
+
+    .content {
+        & {
+            display: grid;
+            gap: 2rem;
+        }
+
+        div {
+            display: grid;
+            place-items: center;
+            background-color: var(--lighter);
+            border-radius: var(--radius-round);
+            height: 5rem;
+        }
+    }
+
+    .footer {
+        & {
+            display: grid;
+            color: var(--light);
+            background-color: var(--dark);
+            grid-template-columns: auto 1fr;
+            grid-template-areas:
+                "repository authors"
+                "hr         hr"
+                "copyright  copyright";
+            line-height: var(--size-large);
+            border-radius: var(--radius-round);
+            padding: 1rem 2rem;
+            gap: 1rem 2rem;
+        }
+
+        .dim-text {
+            font-size: var(--size-small);
+            color: var(--lightish);
+        }
+
+        .repository {
+            & {
+                display: grid;
+                grid-area: repository;
+                grid-template-columns: 3rem 1fr;
+                background-color: var(--neutral);
+                border-radius: var(--radius-round);
+                text-decoration: none;
+                align-items: center;
+                padding: 1rem;
+                gap: 1rem;
+
+                transition: box-shadow var(--transition);
+            }
+
+            &:is(:hover, :focus, :focus-within) {
+                box-shadow: 0 0 0 2px #f8ddac;
+            }
+
+            &:active {
+                box-shadow: 0 0 0 3px #f8ddac;
+            }
+
+            .badge {
+                display: block;
+                width: 100%;
+            }
+        }
+
+        .authors {
+            & {
+                display: flex;
+                grid-area: authors;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+
+            .author-list {
+                & {
+                    flex: 1 0 0;
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                .title {
+                    padding-bottom: .5rem;
+                }
+            }
+        }
+
+        hr {
+            display: block;
+            width: stretch;
+            background-color: var(--neutral);
+            grid-area: hr;
+            height: 1px;
+        }
+
+        .copyright {
+            & {
+                grid-area: copyright;
+                text-align: center;
+            }
+
+            .license:is(:hover, :focus, :focus-within) {
+                color: var(--light);
+            }
+        }
+
+        @media screen and (max-width: 1100px) {
+            & {
+                grid-template-columns: 1fr;
+                grid-template-areas: "repository" "authors" "hr" "copyright";
+            }
+        }
+
+        @media screen and (max-width: 600px) {
+            .authors {
+                flex-direction: column;
+            }
+        }
+    }
+
+    @media screen and (max-width: 700px) {
+        & {
+            grid-template-areas: "main" "sidebar";
+            grid-template-columns: unset;
+            grid-template-rows: 1fr auto;
+        }
+
+        #sidebar {
+            & {
+                grid-template-columns: 1fr;
+            }
+
+            #header,
+            .menu {
+                display: none;
+            }
+
+            #nav {
+                flex-direction: row;
+            }
+
+            .option {
+                & {
+                    flex: 1 0 6rem;
+                }
+
+                &.profile {
+                    display: grid;
+                }
+            }
+
+        }
+    }
+}
