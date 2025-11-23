@@ -12,6 +12,10 @@ type Logger struct {
 	ansi bool
 }
 
+func (l *Logger) Error(s string, param2 string, err error) {
+	panic("unimplemented")
+}
+
 func NewLogger(w io.Writer, name string) *Logger {
 	l := new(Logger)
 
