@@ -9,7 +9,7 @@ const Messages: Record<number, string> = {
 export function StatusPage(status: number): HTMLElement {
     return (
         jsxmm.Element("div", { id: "almodon", className: "status" },
-            jsxmm.Element("img", { className: "wrong-icon", src: Source.From("/dist/assets/wrong.png") }),
+            jsxmm.Element("img", { className: "wrong-icon", src: Source.From("./dist/assets/wrong.png") }),
             jsxmm.Element("div", { className: "status-text", textContent: Messages[status] }),
             jsxmm.Element("div", { className: "status-code", textContent: `Erro ${status}` }),
             jsxmm.Element("a", { className: "go-back", href: "./", textContent: `Voltar para a Página Inicial` }),
@@ -20,7 +20,7 @@ export function StatusPage(status: number): HTMLElement {
 export function ErrConnectionPage(status: number): HTMLElement {
     return (
         jsxmm.Element("div", { id: "almodon", className: "status" },
-            jsxmm.Element("img", { className: "wrong-icon", src: Source.From("/dist/assets/wrong.png") }),
+            jsxmm.Element("img", { className: "wrong-icon", src: Source.From("./dist/assets/wrong.png") }),
             jsxmm.Element("div", { className: "status-text", textContent: Messages[status] }),
             jsxmm.Element("div", { className: "status-code", textContent: `Erro ${status}` }),
             jsxmm.Element("a", { className: "go-back", href: "./", textContent: `Voltar para a Página Inicial` }),

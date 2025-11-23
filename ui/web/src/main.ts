@@ -24,7 +24,7 @@ function setup_navigation(sidebar: HTMLElement, room: HTMLElement, ...namespaces
 
     const orq = new Orquestrator(room)
     for (const namespace of namespaces) {
-        const ctx = new context(Source.From(`/dist/pages/${namespace}.html`))
+        const ctx = new context(Source.From(`./dist/pages/${namespace}.html`))
         
         if (progress !== null) {   
             ctx.onpreload = () => { progress.classList.remove("complete") }

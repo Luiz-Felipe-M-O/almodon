@@ -4,7 +4,7 @@ const OriginToRoot: Record<string, { client: string, server: string }> = {
         server: "http://localhost:4545/api/v1/",
     },
     "https://alan-b-lima.github.io": {
-        client: "https://alan-b-lima.github.io/ui/web",
+        client: "https://alan-b-lima.github.io/almodon/ui/web/",
         server: "",
     },
 }
