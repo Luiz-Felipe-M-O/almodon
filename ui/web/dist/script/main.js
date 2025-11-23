@@ -1,0 +1,67 @@
+import { context, Orquestrator } from "./internal/context/context.js";
+async function main() {
+    const sidebar = document.getElementById("sidebar");
+    if (sidebar === null) {
+        throw new Error("There must be a #sidebar element");
+    }
+    const content = document.getElementById("content");
+    if (content === null) {
+        throw new Error("There must be a #content element");
+    }
+    const namespacing = setup_menu(content, "home", "users", "users-2", "about");
+    setup_sidebar(sidebar, namespacing);
+}
+function setup_menu(room, ...namespaces) {
+    if (namespaces.length === 0) {
+        throw new Error("No namespaces are not allowed");
+    }
+    const orq = new Orquestrator(room);
+    for (const namespace of namespaces) {
+        orq.Link(namespace, new context(`./pages/${namespace}.html`));
+    }
+    let hash = location.hash.slice(1);
+    if (!namespaces.includes(hash)) {
+        hash = namespaces[0];
+    }
+    if (orq.SwapTo(hash)) {
+        const target = document.querySelector(`[data-namespace="${hash}"]`);
+        if (target !== null) {
+            target.classList.add("selected");
+            location.hash = hash;
+        }
+    }
+    return function (namespace) {
+        if (orq.SwapTo(namespace)) {
+            location.hash = namespace;
+            return true;
+        }
+        return false;
+    };
+}
+function setup_sidebar(sidebar, namespacing) {
+    const options = sidebar.querySelectorAll(".option");
+    for (let i = 0; i < options.length; i++) {
+        const option = options[i];
+        option.addEventListener("click", function (evt) {
+            for (let j = 0; j < options.length; j++) {
+                options[j].classList.remove("selected");
+            }
+            const namespace = option.dataset["namespace"];
+            if (namespace !== undefined && namespacing(namespace)) {
+                option.scrollIntoView();
+                option.classList.add("selected");
+            }
+        });
+        click_for_keys(option, "Enter", " ");
+    }
+}
+function click_for_keys(element, ...keys) {
+    element.addEventListener("keydown", function (evt) {
+        if (keys.includes(evt.key)) {
+            evt.target.click();
+            evt.preventDefault();
+        }
+    });
+}
+window.addEventListener("DOMContentLoaded", main);
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibWFpbi5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy9tYWluLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBLE9BQU8sRUFBRSxPQUFPLEVBQUUsWUFBWSxFQUFFLE1BQU0sK0JBQStCLENBQUE7QUFFckUsS0FBSyxVQUFVLElBQUk7SUFDZixNQUFNLE9BQU8sR0FBRyxRQUFRLENBQUMsY0FBYyxDQUFDLFNBQVMsQ0FBQyxDQUFBO0lBQ2xELElBQUksT0FBTyxLQUFLLElBQUksRUFBRSxDQUFDO1FBQ25CLE1BQU0sSUFBSSxLQUFLLENBQUMsa0NBQWtDLENBQUMsQ0FBQTtJQUN2RCxDQUFDO0lBRUQsTUFBTSxPQUFPLEdBQUcsUUFBUSxDQUFDLGNBQWMsQ0FBQyxTQUFTLENBQUMsQ0FBQTtJQUNsRCxJQUFJLE9BQU8sS0FBSyxJQUFJLEVBQUUsQ0FBQztRQUNuQixNQUFNLElBQUksS0FBSyxDQUFDLGtDQUFrQyxDQUFDLENBQUE7SUFDdkQsQ0FBQztJQUVELE1BQU0sV0FBVyxHQUFHLFVBQVUsQ0FBQyxPQUFPLEVBQUUsTUFBTSxFQUFFLE9BQU8sRUFBRSxTQUFTLEVBQUUsT0FBTyxDQUFDLENBQUE7SUFDNUUsYUFBYSxDQUFDLE9BQU8sRUFBRSxXQUFXLENBQUMsQ0FBQTtBQUN2QyxDQUFDO0FBRUQsU0FBUyxVQUFVLENBQUMsSUFBaUIsRUFBRSxHQUFHLFVBQW9CO0lBQzFELElBQUksVUFBVSxDQUFDLE1BQU0sS0FBSyxDQUFDLEVBQUUsQ0FBQztRQUMxQixNQUFNLElBQUksS0FBSyxDQUFDLCtCQUErQixDQUFDLENBQUE7SUFDcEQsQ0FBQztJQUVELE1BQU0sR0FBRyxHQUFHLElBQUksWUFBWSxDQUFDLElBQUksQ0FBQyxDQUFBO0lBRWxDLEtBQUssTUFBTSxTQUFTLElBQUksVUFBVSxFQUFFLENBQUM7UUFDakMsR0FBRyxDQUFDLElBQUksQ0FBQyxTQUFTLEVBQUUsSUFBSSxPQUFPLENBQUMsV0FBVyxTQUFTLE9BQU8s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
