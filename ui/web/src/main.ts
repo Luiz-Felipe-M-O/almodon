@@ -19,14 +19,14 @@ function setup_navigation(sidebar: HTMLElement, room: HTMLElement, ...namespaces
     if (namespaces.length === 0) {
         throw new Error("No namespaces are not allowed")
     }
-    
+
     const progress = document.getElementById("progress")
 
     const orq = new Orquestrator(room)
     for (const namespace of namespaces) {
         const ctx = new context(Source.From(`./dist/pages/${namespace}.html`))
-        
-        if (progress !== null) {   
+
+        if (progress !== null) {
             ctx.onpreload = () => { progress.classList.remove("complete") }
             ctx.onload = () => { progress.classList.add("complete") }
         }
@@ -34,7 +34,7 @@ function setup_navigation(sidebar: HTMLElement, room: HTMLElement, ...namespaces
         orq.Link(namespace, ctx)
     }
 
-    let current = orq.SwapperCurrent()
+    let current = orq.Current()
     if (current === undefined || !namespaces.includes(current)) {
         current = namespaces[0]
     }

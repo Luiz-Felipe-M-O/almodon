@@ -109,12 +109,12 @@ html {
         .bar {
             display: block;
             background-color: var(--primary);
-            transition: height 1s;
+            transition: height 100ms;
             height: 4px;
         }
 
         &:not(.complete) .bar {
-            animation: fake-load 5s linear forwards;
+            animation: fake-load 20s ease-out forwards;
         }
 
         &.complete .bar {
@@ -295,14 +295,22 @@ html {
     }
 
     10% {
-        width: 10%;
-    }
-
-    30% {
         width: 30%;
     }
 
-    100% {
+    25% {
         width: 50%;
+    }
+
+    35% {
+        width: 70%;
+    }
+
+    50% {
+        width: 95%;
+    }
+
+    100% {
+        width: 99%;
     }
 }
