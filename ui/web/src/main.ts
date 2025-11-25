@@ -43,7 +43,7 @@ function setup_navigation(sidebar: HTMLElement, room: HTMLElement, ...namespaces
     for (let i = 0; i < options.length; i++) {
         const option = options[i]
 
-        option.addEventListener("click", handler_sidebar_click.bind(null, option, options, orq))
+        option.addEventListener("click", handler_sidebar_click.bind(null, option, options, orq, progress))
         click_for_keys(option, "Enter", " ")
     }
 
@@ -52,13 +52,13 @@ function setup_navigation(sidebar: HTMLElement, room: HTMLElement, ...namespaces
 
         const namespace = option.dataset["namespace"]
         if (namespace === current) {
-            handler_sidebar_click(option, options, orq)
+            handler_sidebar_click(option, options, orq, progress)
             break
         }
     }
 }
 
-function handler_sidebar_click(option: HTMLElement, options: NodeListOf<HTMLElement>, orq: Orquestrator): void {
+function handler_sidebar_click(option: HTMLElement, options: NodeListOf<HTMLElement>, orq: Orquestrator, progress: HTMLElement | null): void {
     for (let j = 0; j < options.length; j++) {
         options[j].classList.remove("selected")
     }
@@ -66,6 +66,10 @@ function handler_sidebar_click(option: HTMLElement, options: NodeListOf<HTMLElem
     const namespace = option.dataset["namespace"]
     if (namespace === undefined) {
         return
+    }
+
+    if (progress !== null) {
+        progress.classList.add("complete")
     }
 
     if (!orq.SwapTo(namespace)) {
