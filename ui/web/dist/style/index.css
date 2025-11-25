@@ -3,16 +3,14 @@
 * {
     font: inherit;
     color: inherit;
-
     margin: 0;
     padding: 0;
     border: none;
     outline: none;
     box-sizing: border-box;
-
     scroll-behavior: smooth;
-    /* outline: 1px dashed #f007; */
-    line-height: 1.5;
+    line-height: inherit;
+    /* outline:1px dashed #f007; */
 }
 
 [tabindex]:focus {
@@ -43,7 +41,7 @@
 
     --primary-filter: brightness(0) saturate(100%) invert(63%) sepia(67%) saturate(361%) hue-rotate(155deg) brightness(92%) contrast(90%);
 
-    --error: #e55a5a;
+    --error: #d43e39;
     --warn: #e5e35a;
 
     --border: 1px solid transparent;
@@ -62,6 +60,7 @@ html {
     font-family: "Roboto", Arial, sans-serif;
     font-size: var(--font-normal);
     color-scheme: light;
+    line-height: 1.5;
 }
 
 .scrollable {
@@ -99,12 +98,38 @@ html {
         grid-template-columns: auto 1fr;
     }
 
+    #progress {
+        & {
+            position: absolute;
+            pointer-events: none;
+            width: stretch;
+            height: 4px;
+        }
+
+        .bar {
+            display: block;
+            background-color: var(--primary);
+            transition: height 100ms;
+            height: 4px;
+        }
+
+        &:not(.complete) .bar {
+            animation: fake-load 20s ease-out forwards;
+        }
+
+        &.complete .bar {
+            width: 100%;
+            height: 0;
+        }
+    }
+
     #sidebar {
         & {
             display: grid;
             grid-area: sidebar;
             grid-template-rows: auto 1fr auto;
             background-color: var(--lighter);
+            box-shadow: 0 0 8px var(--tertiary);
             overflow: hidden;
         }
 
@@ -124,7 +149,6 @@ html {
         }
 
         #nav {
-
             display: flex;
             overflow: auto;
             flex-direction: column;
@@ -139,8 +163,15 @@ html {
                 font-size: var(--size-small);
                 text-align: center;
                 scroll-margin: 1rem;
-                line-height: 1;
                 padding: .5rem;
+                transition:
+                    border-color var(--transition),
+                    background-color var(--transition),
+                    color var(--transition);
+            }
+
+            .icon {
+                transition: filter var(--transition);
             }
 
             &:is(:active, .selected) .icon {
@@ -149,7 +180,7 @@ html {
 
             &.selected {
                 border-color: var(--primary);
-                background-color: var(--light);
+                background-color: rgb(from var(--primary) r g b / .125);
                 color: var(--primary);
             }
 
@@ -157,7 +188,6 @@ html {
                 display: none;
             }
         }
-
 
         .menu {
             & {
@@ -178,130 +208,50 @@ html {
     }
 
     #main {
-        display: flex;
-        flex-direction: column;
         overflow: auto;
         grid-area: main;
-        padding: 1rem 2rem;
-        gap: 2rem;
+        padding: 2rem;
     }
 
-    .content {
+    #almodon.status {
         & {
             display: grid;
-            gap: 2rem;
+            grid-template-rows: 8rem auto auto;
+            align-content: center;
+            justify-items: center;
+            height: stretch;
+            line-height: 1;
+            gap: 1rem;
         }
 
-        div {
-            display: grid;
-            place-items: center;
+        .wrong-icon {
+            height: stretch;
             background-color: var(--lighter);
-            border-radius: var(--radius-round);
-            height: 5rem;
+            border-radius: var(--radius-pill);
         }
-    }
 
-    .footer {
-        & {
-            display: grid;
-            color: var(--light);
-            background-color: var(--dark);
-            grid-template-columns: auto 1fr;
-            grid-template-areas:
-                "repository authors"
-                "hr         hr"
-                "copyright  copyright";
-            line-height: var(--size-large);
-            border-radius: var(--radius-round);
+        .status-code {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--error);
+        }
+
+        .status-text {
+            font-size: 3rem;
+            text-align: center;
+            color: var(--error);
+            background-color: rgb(from var(--error) r g b / .125);
+            border: var(--border-no-color) var(--error);
+            border-radius: var(--radius-pill);
             padding: 1rem 2rem;
-            gap: 1rem 2rem;
         }
 
-        .dim-text {
-            font-size: var(--size-small);
-            color: var(--lightish);
+        .go-back {
+            transition: color var(--transition);
         }
 
-        .repository {
-            & {
-                display: grid;
-                grid-area: repository;
-                grid-template-columns: 3rem 1fr;
-                background-color: var(--neutral);
-                border-radius: var(--radius-round);
-                text-decoration: none;
-                align-items: center;
-                padding: 1rem;
-                gap: 1rem;
-
-                transition: box-shadow var(--transition);
-            }
-
-            &:is(:hover, :focus, :focus-within) {
-                box-shadow: 0 0 0 2px #f8ddac;
-            }
-
-            &:active {
-                box-shadow: 0 0 0 3px #f8ddac;
-            }
-
-            .badge {
-                display: block;
-                width: 100%;
-            }
-        }
-
-        .authors {
-            & {
-                display: flex;
-                grid-area: authors;
-                flex-wrap: wrap;
-                gap: 1rem;
-            }
-
-            .author-list {
-                & {
-                    flex: 1 0 0;
-                    display: flex;
-                    flex-direction: column;
-                }
-
-                .title {
-                    padding-bottom: .5rem;
-                }
-            }
-        }
-
-        hr {
-            display: block;
-            width: stretch;
-            background-color: var(--neutral);
-            grid-area: hr;
-            height: 1px;
-        }
-
-        .copyright {
-            & {
-                grid-area: copyright;
-                text-align: center;
-            }
-
-            .license:is(:hover, :focus, :focus-within) {
-                color: var(--light);
-            }
-        }
-
-        @media screen and (max-width: 1100px) {
-            & {
-                grid-template-columns: 1fr;
-                grid-template-areas: "repository" "authors" "hr" "copyright";
-            }
-        }
-
-        @media screen and (max-width: 600px) {
-            .authors {
-                flex-direction: column;
-            }
+        .go-back:is(:hover, :focus, :focus-within) {
+            color: var(--primary);
         }
     }
 
@@ -335,7 +285,32 @@ html {
                     display: grid;
                 }
             }
-
         }
+    }
+}
+
+@keyframes fake-load {
+    0% {
+        width: 0%;
+    }
+
+    10% {
+        width: 30%;
+    }
+
+    25% {
+        width: 50%;
+    }
+
+    35% {
+        width: 70%;
+    }
+
+    50% {
+        width: 95%;
+    }
+
+    100% {
+        width: 99%;
     }
 }

@@ -1,22 +1,32 @@
-export interface Context {
-	Build(): Promise<HTMLElement>
+import { AsyncTry } from "../../module/errors/try.ts"
+import jsxmm from "../../module/jsxmm/element.ts"
+import { StatusPage } from "../component/status.ts"
+import Source from "../support/source.ts"
+
+export interface Swapper {
+	Namespace(): string | undefined
+	SwapNamespace(namespace: string): void
+}
+
+interface Context extends Component {
+	Final(): boolean
 }
 
 export class Orquestrator {
 	#room: HTMLElement
 
 	#contexts: Record<string, Context>
-	#current: string | undefined
+	#swapper: Swapper
 
-	constructor(switchable: HTMLElement) {
-		this.#room = switchable
+	constructor(placeholder: HTMLElement, swapper: Swapper = new hash()) {
+		this.#room = placeholder
 
 		this.#contexts = {}
-		this.#current = undefined
+		this.#swapper = swapper
 	}
 
 	Current(): string | undefined {
-		return this.#current
+		return this.#swapper.Namespace()
 	}
 
 	Link(namespace: string, context: Context): void {
@@ -28,56 +38,127 @@ export class Orquestrator {
 	}
 
 	SwapTo(namespace: string): boolean {
-		if (this.#current === namespace) {
-			return true
-		}
-
-		const context = this.#contexts[namespace]
-		if (context === undefined) {
+		if (!Object.hasOwn(this.#contexts, namespace)) {
 			return false
 		}
 
-		context.Build().then((content) => {
-			this.#room.replaceChildren(content)
-		}).catch(() => {
-			this.#room.replaceChildren("something went wrong")
-			this.Unlink(namespace)
-		})
+		const context = this.#contexts[namespace]
+		if (context.Final() && this.Current() === namespace) {
+			return true
+		}
+
+		const content = context.HTML()
+		this.#room.replaceChildren(content)
+		this.#swapper.SwapNamespace(namespace)
 
 		return true
 	}
 }
 
 export class context {
-	private static parser = new DOMParser()
-
 	#url: string
-	#content: HTMLElement | undefined
+	#content: HTMLElement
+	#retry: boolean
+
+	onpreload?: () => void
+	onload?: () => void
 
 	constructor(url: string) {
-		this.#content = undefined
 		this.#url = url
+		this.#retry = true
+
+		this.#content = jsxmm.Element("div", { id: "almodon" })
 	}
 
-	async Build(): Promise<HTMLElement> {
-		if (this.#content !== undefined) {
+	Final(): boolean {
+		return !this.#retry
+	}
+
+	HTML(): HTMLElement {
+		if (this.#retry) {
+			try_callback(this.onpreload)
+
+			load(this.#url).then(([result, ok]) => {
+				this.#content.replaceWith(result)
+				this.#content = result
+				this.#retry = !ok
+
+				try_callback(this.onload)
+			})
+
 			return this.#content
 		}
 
-		const result = await fetch(this.#url)
-		if (!result.ok) {
-			throw new Error(result.statusText)
+		return this.#content
+	}
+}
+
+const Parser = new DOMParser()
+
+async function load(url: string): Promise<[HTMLElement, boolean]> {
+	const [result, error] = await AsyncTry(fetch, url)
+	if (error !== null) {
+		throw error
+	}
+	if (!result.ok) {
+		return [StatusPage(result.status), false]
+	}
+
+	const page = await result.text()
+	const new_document = Parser.parseFromString(page, "text/html")
+
+	const content = new_document.getElementById("almodon")
+	if (content === null) {
+		return [StatusPage(204), false]
+	}
+
+	const element = new_document.getElementById("meta-almodon")
+	if (element !== null) {
+		for (const property of element.children as any as HTMLElement[]) {
+			switch (property.tagName) {
+			case "ALMODON-SCRIPT":
+				const src = property.dataset["src"]
+				if (src !== undefined) {
+					await import(new URL(src, url).href)
+				}
+				break
+
+			case "ALMODON-STYLE":
+				const href = property.dataset["href"]
+				if (href !== undefined) {
+					const style = jsxmm.Element("link", {
+						rel: "stylesheet",
+						href: Source.From(href, url),
+					})
+
+					document.head.append(style)
+					await new Promise(resolve => {
+						style.onload = resolve
+					})
+				}
+				break
+
+			default:
+				throw new Error("Unrecognized property " + property.tagName.toLocaleLowerCase())
+			}
 		}
+	}
 
-		const page = await result.text()
-		const document = context.parser.parseFromString(page, "text/html")
+	return [content, true]
+}
 
-		const content = document.getElementById("almodon")
-		if (content === null) {
-			throw new Error("No content")
-		}
+export class hash implements Swapper {
+	Namespace(): string | undefined {
+		return location.hash.slice(1)
+	}
 
-		this.#content = content
-		return content
+	SwapNamespace(namespace: string): void {
+		location.hash = namespace
+	}
+}
+
+function try_callback(callback?: () => void): void {
+	if (callback !== undefined) {
+		callback()
 	}
 }
