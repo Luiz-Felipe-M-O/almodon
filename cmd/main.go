@@ -28,22 +28,21 @@ func main() {
 
 	ln, err := net.Listen("tcp", ":4545")
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		return
 	}
 
 	url := "http://" + strings.Replace(ln.Addr().String(), "[::]", "localhost", 1)
-	log.Printf("Server listening at %s\n", style.HyperLink(url))
-
-	var mux http.ServeMux
+	log.Infof("Server listening at %s\n", style.HyperLink(url))
 
 	api, err := api.New()
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		return
 	}
 	defer api.Close()
 
+	var mux http.ServeMux
 	mux.Handle("/", http.FileServer(http.Dir("../ui/web/")))
 	mux.Handle("/api/", api)
 	mux.HandleFunc("/terminate/{timeout}", Terminate)
@@ -51,12 +50,12 @@ func main() {
 	srv := http.Server{Handler: TrafficLogMiddleware(log, style, &mux)}
 
 	done := EnableGracefulShutdown(func() {
-		log.Println("Shutting server down...")
+		log.Info("Shutting server down...")
 		srv.Shutdown(context.Background())
 	})
 
 	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-		log.Println(err)
+		log.Error(err)
 	}
 
 	<-done
@@ -68,14 +67,19 @@ func TrafficLogMiddleware(log *middleware.Logger, s Style, handler http.Handler)
 
 		handler.ServeHTTP(rw, r)
 
-		pen := s.StatusCodePen(rw.StatusCode())
+		status := rw.StatusCode()
+		pen := s.StatusCodePen(status)
 
 		var barr [32]byte
 		b := bytes.NewBuffer(barr[:0])
 		pen.Writer = b
 
-		io.WriteString(&pen, fmt.Sprintf(" %03d ", rw.StatusCode()))
-		log.Printf("%s %s %s %s\n", b.String(), r.RemoteAddr, r.Method, r.URL)
+		io.WriteString(&pen, fmt.Sprintf(" %03d ", status))
+		if 500 <= status && status < 599 {
+			log.Errorf("%s %s %s %s\n", b.String(), r.RemoteAddr, r.Method, r.URL)
+		} else {
+			log.Infof("%s %s %s %s\n", b.String(), r.RemoteAddr, r.Method, r.URL)
+		}
 	}
 }
 
