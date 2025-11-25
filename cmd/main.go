@@ -18,29 +18,13 @@ import (
 	"github.com/alan-b-lima/almodon/internal/support/middleware"
 
 	"github.com/alan-b-lima/ansi-escape-sequences"
-
-	"github.com/alan-b-lima/almodon/db"
 )
 
 var StdOut = os.Stdout
 
-
-
 func main() {
-	// Endereço do banco de dados
-	dbURL := "postgres://postgres:admin123@localhost:5432/almodon"
-	
-
 	log := middleware.NewLogger(StdOut, "")
 	style := Styles()
-
-	// Conexão com o banco de dados
-	conn, err := db.NewConnection(dbURL)
-
-	if err != nil{
-		log.Error("Erro fatal ao conectar no banco", "erro", err) 
-        os.Exit(1)
-	}
 
 	ln, err := net.Listen("tcp", ":4545")
 	if err != nil {
