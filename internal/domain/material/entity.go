@@ -1,12 +1,13 @@
 package material
 
 import (
-	"time"
-	"unicode"
-
+	"errors"
 	"github.com/alan-b-lima/almodon/internal/support/entity"
 	"github.com/alan-b-lima/almodon/internal/xerrors"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+	"strings"
+	"time"
+	"unicode"
 )
 
 const (
@@ -15,6 +16,68 @@ const (
 	ecampusLength        = 20
 	descriptionMaxLength = 2048
 )
+
+type unitDefinition struct {
+	canonical     string
+	abbreviations []string
+}
+
+var predefinedUnits = map[string]unitDefinition{
+	"unidade": {
+		canonical:     "unidade",
+		abbreviations: []string{"und", "unid", "un", "u"},
+	},
+	"caixa": {
+		canonical:     "caixa",
+		abbreviations: []string{"cx"},
+	},
+	"pacote": {
+		canonical:     "pacote",
+		abbreviations: []string{"pct"},
+	},
+	"frasco": {
+		canonical:     "frasco",
+		abbreviations: []string{"fr"},
+	},
+	"mililitro": {
+		canonical:     "mililitro",
+		abbreviations: []string{"ml"},
+	},
+	"grama": {
+		canonical:     "grama",
+		abbreviations: []string{"g", "gr"},
+	},
+	"par": {
+		canonical:     "par",
+		abbreviations: []string{},
+	},
+	"litro": {
+		canonical:     "litro",
+		abbreviations: []string{"l", "lt"},
+	},
+	"resma": {
+		canonical:     "resma",
+		abbreviations: []string{},
+	},
+	"rolo": {
+		canonical:     "rolo",
+		abbreviations: []string{},
+	},
+	"galão": {
+		canonical:     "galão",
+		abbreviations: []string{"gal"},
+	},
+	"cartela": {
+		canonical:     "cartela",
+		abbreviations: []string{"crt"},
+	},
+	"tira": {
+		canonical:     "tira",
+		abbreviations: []string{},
+	},
+}
+
+var customUnits = make(map[string]unitDefinition)
 
 type Material struct {
 	uuid        uuid.UUID
@@ -113,16 +176,31 @@ func ProcessECAMPUS(ecampus string) (string, error) {
 
 func ProcessDescription(description string) (string, error) {
 	if len(description) > descriptionMaxLength {
-		return "", xerrors.ErrTODO
+		return "", xerrors.ErrDescriptionTooLong
 	}
 	return description, nil
 }
 
 func ProcessUnit(unit string) (string, error) {
 	if unit == "" {
-		return "", xerrors.ErrTODO
+		return "", xerrors.ErrUnitEmpty
 	}
-	return unit, nil
+
+	normalized, err := normalizeUnit(unit)
+	if err != nil {
+		// If unit not found, add it as a custom unit automatically
+		if err == xerrors.ErrUnitNotFound {
+			cleanUnit := strings.ToLower(strings.TrimSpace(unit))
+			customUnits[cleanUnit] = unitDefinition{
+				canonical:     cleanUnit,
+				abbreviations: []string{},
+			}
+			return cleanUnit, nil
+		}
+		return "", err
+	}
+
+	return normalized, nil
 }
 
 func ProcessMinQuantity(minQuantity float64) (float64, error) {
@@ -132,11 +210,44 @@ func ProcessMinQuantity(minQuantity float64) (float64, error) {
 	return minQuantity, nil
 }
 
+func normalizeUnit(input string) (string, error) {
+	if input == "" {
+		return "", xerrors.ErrUnitEmpty
+	}
+
+	normalized := strings.ToLower(strings.TrimSpace(input))
+
+	if unit, exists := predefinedUnits[normalized]; exists {
+		return unit.canonical, nil
+	}
+
+	if unit, exists := customUnits[normalized]; exists {
+		return unit.canonical, nil
+	}
+
+	for _, unit := range predefinedUnits {
+		for _, abbr := range unit.abbreviations {
+			if normalized == abbr {
+				return unit.canonical, nil
+			}
+		}
+	}
+
+	for _, unit := range customUnits {
+		for _, abbr := range unit.abbreviations {
+			if normalized == abbr {
+				return unit.canonical, nil
+			}
+		}
+	}
+
+	return "", xerrors.ErrUnitNotFound
+}
+
 func processIdNumber(id string, expectedLength int) (string, error) {
 	if len(id) > expectedLength {
 		return "", xerrors.ErrInvalidIdLength
 	}
-
 	if !isAllDigits(id) {
 		return "", xerrors.ErrIdContainsNonDigits
 	}
