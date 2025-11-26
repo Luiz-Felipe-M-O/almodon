@@ -23,8 +23,8 @@ func ListByCATMAT(materials ListerByCATMAT, catmat string) (Entities, error) {
 	return materials.ListByCATMAT(catmat)
 }
 
-func ListByECAMPUS(materials ListerByECAMPUS, ecampus string) (Entities, error) {
-	return materials.ListByECAMPUS(ecampus)
+func ListByECampus(materials ListerByECAMPUS, ecampus string) (Entities, error) {
+	return materials.ListByECampus(ecampus)
 }
 
 func Create(materials Creater, name, siads, catmat, ecampus, description,
