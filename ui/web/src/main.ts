@@ -1,4 +1,5 @@
-import { context, Orquestrator } from "./internal/context/context.ts"
+import { Context, Orquestrator, resouce, StaticPage } from "./internal/context/context.ts"
+import UserView from "./internal/domain/user/view.ts"
 import Source from "./internal/support/source.ts"
 
 async function main(): Promise<void> {
@@ -12,10 +13,31 @@ async function main(): Promise<void> {
         throw new Error("There must be a #main element")
     }
 
-    setup_navigation(sidebar, main, "home", "users", "users-2", "about")
+    const api = await setup_api()
+
+    setup_navigation(sidebar, main,
+        ["home", new StaticPage(Source.From("./dist/pages/home.html"))],
+        ["users", new UserView(api.users)],
+        ["table", new StaticPage(Source.From("./dist/pages/table.html"))],
+        ["about", new StaticPage(Source.From("./dist/pages/about.html"))],
+    )
 }
 
-function setup_navigation(sidebar: HTMLElement, room: HTMLElement, ...namespaces: string[]): void {
+async function setup_api(): Promise<{ users: user.Gateway }> {
+    if (Source.server === "") {
+        const users = await import("./internal/domain/user/gateway/mock.ts")
+        return {
+            users: new users.UserGateway(),
+        }
+    }
+
+    const users = await import("./internal/domain/user/gateway/api.ts")
+    return {
+        users: new users.UserGateway(Source.From("./users", Source.server)),
+    }
+}
+
+function setup_navigation(sidebar: HTMLElement, room: HTMLElement, ...namespaces: [string, Context][]): void {
     if (namespaces.length === 0) {
         throw new Error("No namespaces are not allowed")
     }
@@ -23,20 +45,18 @@ function setup_navigation(sidebar: HTMLElement, room: HTMLElement, ...namespaces
     const progress = document.getElementById("progress")
 
     const orq = new Orquestrator(room)
-    for (const namespace of namespaces) {
-        const ctx = new context(Source.From(`./dist/pages/${namespace}.html`))
-
-        if (progress !== null) {
-            ctx.onpreload = () => { progress.classList.remove("complete") }
-            ctx.onload = () => { progress.classList.add("complete") }
+    for (const [namespace, context] of namespaces) {
+        if (progress !== null && context instanceof StaticPage) {
+            context.onpreload = () => { progress.classList.remove("complete") }
+            context.onload = () => { progress.classList.add("complete") }
         }
 
-        orq.Link(namespace, ctx)
+        orq.Link(namespace, context)
     }
 
     let current = orq.Current()
-    if (current === undefined || !namespaces.includes(current)) {
-        current = namespaces[0]
+    if (current === undefined || namespaces.findIndex(([namespace]) => namespace === current) === -1) {
+        current = namespaces[0][0]
     }
 
     const options = sidebar.querySelectorAll<HTMLElement>(".option")

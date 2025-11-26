@@ -1,11 +1,12 @@
 namespace user {
     interface Gateway {
-        async List(offset: number, limit: number): Promise<ListResponse>
-        async Get(uuid: UUID): Promise<Response>
-        async Create(req: Entity): Promise<UUID>
-        async Patch(uuid: UUID, req: PartialEntity): Promise<void>
-        async Delete(uuid: UUID): Promise<void>
-        async Autheticate(siape: number, password: string): Promise<AuthResponse>
+        List(offset: number, limit: number): Promise<ListResponse>
+        Get(uuid: UUID): Promise<Response>
+        Create(req: Entity): Promise<UUID>
+        Patch(uuid: UUID, req: PartialEntity): Promise<void>
+        Delete(uuid: UUID): Promise<void>
+        Autheticate(siape: number, password: string): Promise<AuthResponse>
+        Me(): Promise<Response>
     }
 
     type Entity = {

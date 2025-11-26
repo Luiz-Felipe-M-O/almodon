@@ -8,7 +8,7 @@ export interface Swapper {
 	SwapNamespace(namespace: string): void
 }
 
-interface Context extends Component {
+export interface Context extends Component {
 	Final(): boolean
 }
 
@@ -55,7 +55,7 @@ export class Orquestrator {
 	}
 }
 
-export class context {
+export class StaticPage implements Context {
 	#url: string
 	#content: HTMLElement
 	#retry: boolean
@@ -98,7 +98,7 @@ const Parser = new DOMParser()
 async function load(url: string): Promise<[HTMLElement, boolean]> {
 	const [result, error] = await AsyncTry(fetch, url)
 	if (error !== null) {
-		throw error
+		return [StatusPage(500), false]
 	}
 	if (!result.ok) {
 		return [StatusPage(result.status), false]
@@ -119,7 +119,7 @@ async function load(url: string): Promise<[HTMLElement, boolean]> {
 			case "ALMODON-SCRIPT":
 				const src = property.dataset["src"]
 				if (src !== undefined) {
-					await import(new URL(src, url).href)
+					await import(Source.From(src, url))
 				}
 				break
 
@@ -154,6 +154,18 @@ export class hash implements Swapper {
 
 	SwapNamespace(namespace: string): void {
 		location.hash = namespace
+	}
+}
+
+export class resouce implements Swapper {
+	Namespace(): string | undefined {
+		const index = location.pathname.lastIndexOf("/")
+		return location.pathname.slice(index + 1)
+	}
+
+	SwapNamespace(namespace: string): void {
+		const index = location.href.lastIndexOf("/")
+		history.pushState(null, "", Source.From("./" + namespace, location.href.slice(0, index + 1)))
 	}
 }
 

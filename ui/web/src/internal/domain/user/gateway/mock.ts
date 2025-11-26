@@ -16,12 +16,52 @@ export class UserGateway implements user.Gateway {
     constructor() {
         this.#users = [
             {
-                uuid: "00000000-0000-0000-0000-000000000001",
-                siape: 123456,
+                uuid: "019a921e-02ff-7cfb-6c98-a9d888ebe4a2",
+                siape: 1,
                 name: "Alan Lima",
-                email: "example@example.com",
+                email: "alan-lima.al@ufvjm.edu.br",
                 password: "12345678",
-                role: "admin",
+                role: "chief"
+            },
+            {
+                uuid: "019a921e-3fb1-7d33-5b88-9b569416db4c",
+                siape: 2,
+                name: "Breno",
+                email: "breno@ufvjm.edu.br",
+                password: "12345678",
+                role: "admin"
+            },
+            {
+                uuid: "019a9220-d660-7e60-70d5-7dc1dc580a02",
+                siape: 3,
+                name: "Luiz",
+                email: "lf@ufvjm.edu.br",
+                password: "12345678",
+                role: "user"
+            },
+            {
+                uuid: "019a9798-2c46-74e0-5dea-3c7c98a45599",
+                siape: 4,
+                name: "Rafael",
+                email: "r@ufvjm.edu.br",
+                password: "12345678",
+                role: "user"
+            },
+            {
+                uuid: "019a9f7c-ad1b-70a7-49a3-58828f3b66d6",
+                siape: 5,
+                name: "Otávio Calazans",
+                email: "tavinhogomesoficial@hotmail.com",
+                password: "12345678",
+                role: "user"
+            },
+            {
+                uuid: "019aa844-0fbf-78d9-7422-caf8961a8ccb",
+                siape: 6,
+                name: "Lucas",
+                email: "rocha@ufvjm.edu.br",
+                password: "12345678",
+                role: "admin"
             }
         ]
 
