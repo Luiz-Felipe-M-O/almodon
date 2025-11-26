@@ -46,7 +46,7 @@ Do:
 	return s.Service.Get(uuid)
 }
 
-func (s *Gate) GetBySIAPE(siape int) (user.Entity, error) {
+func (s *Gate) GetBySIAPE(siape string) (user.Entity, error) {
 	res, err := s.Service.GetBySIAPE(siape)
 	if err != nil {
 		return user.Entity{}, err

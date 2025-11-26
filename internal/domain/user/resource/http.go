@@ -2,7 +2,6 @@ package users
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/alan-b-lima/almodon/internal/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
@@ -87,12 +86,7 @@ func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
 
 func (rc *Resource) GetBySIAPE(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(rc.Ident, func(act auth.Actor) (user.Result, error) {
-		siape, err := strconv.Atoi(r.PathValue("siape"))
-		if err != nil {
-			return user.Result{}, err
-		}
-
-		ent, err := rc.Users.Permit(act).GetBySIAPE(siape)
+		ent, err := rc.Users.Permit(act).GetBySIAPE(r.PathValue("siape"))
 		if err != nil {
 			return user.Result{}, err
 		}
@@ -173,10 +167,12 @@ func (rc *Resource) Me(w http.ResponseWriter, r *http.Request) {
 
 func transform(e *user.Entity) user.Result {
 	return user.Result{
-		UUID:  e.UUID,
-		SIAPE: e.SIAPE,
-		Name:  e.Name,
-		Email: e.Email,
-		Role:  e.Role,
+		UUID:    e.UUID,
+		SIAPE:   e.SIAPE,
+		Name:    e.Name,
+		Email:   e.Email,
+		Role:    e.Role,
+		Created: e.Created,
+		Updated: e.Updated,
 	}
 }

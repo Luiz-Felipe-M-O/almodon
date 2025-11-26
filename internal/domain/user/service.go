@@ -9,7 +9,7 @@ type Service interface {
 	List(req ListParams) (Entities, error)
 
 	Get(uuid uuid.UUID) (Entity, error)
-	GetBySIAPE(siape int) (Entity, error)
+	GetBySIAPE(siape string) (Entity, error)
 
 	Create(req Create) (uuid.UUID, error)
 
@@ -19,6 +19,6 @@ type Service interface {
 
 	Delete(uuid uuid.UUID) error
 
-	Authenticate(siape int, password string) (AuthEntity, error)
+	Authenticate(siape string, password string) (AuthEntity, error)
 	Actor(session uuid.UUID) (auth.Actor, error)
 }

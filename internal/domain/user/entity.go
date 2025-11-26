@@ -14,14 +14,14 @@ import (
 
 type User struct {
 	uuid     uuid.UUID
-	siape    int
+	siape    string
 	name     string
 	email    string
 	password [60]byte
 	role     auth.Role
 }
 
-func New(siape int, name, email, password string, role auth.Role) (User, error) {
+func New(siape, name, email, password string, role auth.Role) (User, error) {
 	var u User
 
 	errpwd := u.SetPassword(password)
@@ -45,19 +45,19 @@ func New(siape int, name, email, password string, role auth.Role) (User, error) 
 }
 
 func (u *User) UUID() uuid.UUID    { return u.uuid }
-func (u *User) SIAPE() int         { return u.siape }
+func (u *User) SIAPE() string         { return u.siape }
 func (u *User) Name() string       { return u.name }
 func (u *User) Email() string      { return u.email }
 func (u *User) Password() [60]byte { return u.password }
 func (u *User) Role() auth.Role    { return u.role }
 
-func (u *User) SetSIAPE(siape int) error          { return set(&u.siape, siape, ProcessSiape) }
+func (u *User) SetSIAPE(siape string) error       { return set(&u.siape, siape, ProcessSiape) }
 func (u *User) SetName(name string) error         { return set(&u.name, name, ProcessName) }
 func (u *User) SetEmail(email string) error       { return set(&u.email, email, ProcessEmail) }
 func (u *User) SetPassword(password string) error { return set(&u.password, password, ProcessPassword) }
 func (u *User) SetRole(role auth.Role) error      { return set(&u.role, role, ProcessRole) }
 
-func ProcessSiape(siape int) (int, error) {
+func ProcessSiape(siape string) (string, error) {
 	return siape, nil
 }
 

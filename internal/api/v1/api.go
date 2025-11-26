@@ -60,7 +60,7 @@ func New() (*Handler, error) {
 	h.cleanup.BundleMany(
 		RepoPromotions,
 		RepoSessions,
-		errRepoUsers,
+		RepoUsers,
 		CorePromotions,
 		CoreSessions,
 		CoreUsers,

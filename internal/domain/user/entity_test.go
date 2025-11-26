@@ -71,7 +71,7 @@ func TestProcessPassword(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	type Tests struct {
-		siape      int
+		siape      string
 		name       string
 		email      string
 		password   string
@@ -80,11 +80,11 @@ func TestNew(t *testing.T) {
 	}
 
 	tests := []Tests{
-		{123456, "Alan Lima", "alan@almodon.com", "StrongPass1!", auth.Admin, false},
-		{123456, "Alan Lima", "invalid-email", "StrongPass1!", auth.User, true},
-		{123456, "Alan Lima", "alan@almodon.com", "short", auth.User, true},
-		{123456, "", "alan@almodon.com", "StrongPass1!", auth.User, true},
-		{123456, "Alan Lima", "alan@almodon.com", "StrongPass1!", auth.Role(50), true},
+		{"123456", "Alan Lima", "alan@almodon.com", "StrongPass1!", auth.Admin, false},
+		{"123456", "Alan Lima", "invalid-email", "StrongPass1!", auth.User, true},
+		{"123456", "Alan Lima", "alan@almodon.com", "short", auth.User, true},
+		{"123456", "", "alan@almodon.com", "StrongPass1!", auth.User, true},
+		{"123456", "Alan Lima", "alan@almodon.com", "StrongPass1!", auth.Role(50), true},
 	}
 
 	for _, test := range tests {

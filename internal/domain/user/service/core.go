@@ -1,6 +1,8 @@
 package userserve
 
 import (
+	"time"
+
 	"github.com/alan-b-lima/almodon/internal/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
 	"github.com/alan-b-lima/almodon/internal/domain/session"
@@ -19,6 +21,8 @@ type Core struct {
 	Promotions promotion.Service
 }
 
+var _ user.Service = &Core{}
+
 func (c *Core) List(req user.ListParams) (user.Entities, error) {
 	return c.Users.List(req.Offset, req.Limit)
 }
@@ -27,7 +31,7 @@ func (c *Core) Get(uuid uuid.UUID) (user.Entity, error) {
 	return c.Users.Get(uuid)
 }
 
-func (c *Core) GetBySIAPE(siape int) (user.Entity, error) {
+func (c *Core) GetBySIAPE(siape string) (user.Entity, error) {
 	return c.Users.GetBySIAPE(siape)
 }
 
@@ -37,7 +41,13 @@ func (c *Core) Create(req user.Create) (uuid.UUID, error) {
 		return uuid.UUID{}, err
 	}
 
-	return u.UUID(), c.Users.Create(translate(&u))
+	ent := translate(&u)
+
+	now := time.Now()
+	ent.Created = now
+	ent.Updated = now
+
+	return u.UUID(), c.Users.Create(ent)
 }
 
 func (c *Core) Patch(uuid uuid.UUID, req user.Patch) error {
@@ -61,7 +71,7 @@ func (c *Core) Delete(uuid uuid.UUID) error {
 	return c.Users.Delete(uuid)
 }
 
-func (c *Core) Authenticate(siape int, password string) (user.AuthEntity, error) {
+func (c *Core) Authenticate(siape, password string) (user.AuthEntity, error) {
 	res, err := c.Users.GetBySIAPE(siape)
 	if err != nil {
 		return user.AuthEntity{}, err
@@ -121,6 +131,8 @@ func patch(users user.Patcher, uuid uuid.UUID, name, email, password opt.Opt[str
 	if err != nil {
 		return xerrors.ErrUserUpdate.New(err)
 	}
+
+	u.Updated = time.Now()
 
 	return users.Patch(uuid, u)
 }

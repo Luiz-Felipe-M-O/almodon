@@ -27,7 +27,7 @@ type (
 	}
 
 	GetterBySIAPE interface {
-		GetBySIAPE(int) (Entity, error)
+		GetBySIAPE(string) (Entity, error)
 	}
 
 	Creater interface {
@@ -53,19 +53,22 @@ type (
 
 	Entity struct {
 		UUID     uuid.UUID
-		SIAPE    int
+		SIAPE    string
 		Name     string
 		Email    string
 		Password [60]byte
 		Role     auth.Role
+		Created  time.Time
+		Updated  time.Time
 	}
 
 	PartialEntity struct {
-		SIAPE    opt.Opt[int]
+		SIAPE    opt.Opt[string]
 		Name     opt.Opt[string]
 		Email    opt.Opt[string]
 		Password opt.Opt[[60]byte]
 		Role     opt.Opt[auth.Role]
+		Updated  time.Time
 	}
 
 	AuthEntity struct {

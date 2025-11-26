@@ -15,7 +15,7 @@ type (
 	}
 
 	Create struct {
-		SIAPE    int       `json:"siape"`
+		SIAPE    string    `json:"siape"`
 		Name     string    `json:"name"`
 		Email    string    `json:"email"`
 		Password string    `json:"password"`
@@ -36,7 +36,7 @@ type (
 	}
 
 	Authenticate struct {
-		SIAPE    int    `json:"siape"`
+		SIAPE    string `json:"siape"`
 		Password string `json:"password"`
 	}
 )
@@ -50,11 +50,13 @@ type (
 	}
 
 	Result struct {
-		UUID  uuid.UUID `json:"uuid"`
-		SIAPE int       `json:"siape"`
-		Name  string    `json:"name"`
-		Email string    `json:"email"`
-		Role  auth.Role `json:"role"`
+		UUID    uuid.UUID `json:"uuid"`
+		SIAPE   string    `json:"siape"`
+		Name    string    `json:"name"`
+		Email   string    `json:"email"`
+		Role    auth.Role `json:"role"`
+		Created time.Time `json:"created"`
+		Updated time.Time `json:"updated"`
 	}
 
 	CreateResult struct {

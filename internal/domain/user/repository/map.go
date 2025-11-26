@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/alan-b-lima/almodon/internal/auth"
@@ -17,7 +18,7 @@ import (
 
 type Map struct {
 	uuidIndex  map[uuid.UUID]int
-	siapeIndex map[int]int
+	siapeIndex map[string]int
 
 	repo []user.Entity
 	mu   sync.RWMutex
@@ -28,7 +29,7 @@ type Map struct {
 func NewMap() user.Repository {
 	repo := Map{
 		uuidIndex:  make(map[uuid.UUID]int),
-		siapeIndex: make(map[int]int),
+		siapeIndex: make(map[string]int),
 	}
 
 	return &repo
@@ -37,7 +38,7 @@ func NewMap() user.Repository {
 func NewPersistantMap(datapath string) (user.Repository, error) {
 	repo := Map{
 		uuidIndex:  make(map[uuid.UUID]int),
-		siapeIndex: make(map[int]int),
+		siapeIndex: make(map[string]int),
 		datapath:   datapath,
 	}
 
@@ -132,7 +133,7 @@ func (m *Map) Get(uuid uuid.UUID) (user.Entity, error) {
 	return m.repo[index], nil
 }
 
-func (m *Map) GetBySIAPE(siape int) (user.Entity, error) {
+func (m *Map) GetBySIAPE(siape string) (user.Entity, error) {
 	defer m.mu.RUnlock()
 	m.mu.RLock()
 
@@ -237,11 +238,13 @@ func clamp[T cmp.Ordered](mn, val, mx T) T {
 
 type entity struct {
 	UUID     uuid.UUID `json:"uuid"`
-	SIAPE    int       `json:"siape"`
+	SIAPE    string    `json:"siape"`
 	Name     string    `json:"name"`
 	Email    string    `json:"email"`
 	Password pwd       `json:"password"`
 	Role     auth.Role `json:"role"`
+	Created  time.Time `json:"created"`
+	Updated  time.Time `json:"updated"`
 }
 
 func json_for_entity(entities []user.Entity) []entity {
