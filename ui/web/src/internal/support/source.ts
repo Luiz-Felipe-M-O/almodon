@@ -1,4 +1,8 @@
 const OriginToRoot: Record<string, { client: string, server: string }> = {
+    "http://localhost:3000": {
+        client: "http://localhost:3000/",
+        server: "",
+    },
     "http://localhost:4545": {
         client: "http://localhost:4545/",
         server: "http://localhost:4545/api/v1/",

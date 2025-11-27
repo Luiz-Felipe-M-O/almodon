@@ -14,7 +14,7 @@ export async function APIFetch<M extends APIMethods>(url: string, method: M, opt
 	}
 
 	const query = new URLSearchParams(config.query).toString()
-	const resp = await fetch(url + query, {
+	const resp = await fetch(`${url}?${query}`, {
 		method: method,
 		headers: Headers[method],
 		body: config.body,
