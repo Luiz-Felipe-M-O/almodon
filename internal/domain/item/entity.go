@@ -10,17 +10,19 @@ import (
 )
 
 type ItemUnit struct {
-	uuid       uuid.UUID
-	batch      uuid.UUID
-	material   uuid.UUID
-	quantity   float64
-	expiration time.Time // isZero() means, by convention, that an item does not expire
-	createdAt  time.Time
-	updatedAt  time.Time
+	uuid     uuid.UUID
+	batch    uuid.UUID
+	material uuid.UUID
+	quantity float64
+
+	// zero value, [time.Time.IsZero](), means, by convention, that
+	// an item does not expire.
+	expiration time.Time
 }
 
 func New(batch, material uuid.UUID, quantity float64, expiration time.Time) (ItemUnit, error) {
 	var i ItemUnit
+
 	err := errors.Join(
 		i.SetBatch(batch),
 		i.SetMaterial(material),
@@ -32,20 +34,7 @@ func New(batch, material uuid.UUID, quantity float64, expiration time.Time) (Ite
 	}
 
 	i.uuid = uuid.NewUUIDv7()
-	i.createdAt = time.Now()
-	i.updatedAt = time.Now()
 	return i, nil
-}
-
-func (i *ItemUnit) IsExpired() bool {
-	if i.expiration.IsZero() {
-		return false
-	}
-	return time.Now().After(i.expiration)
-}
-
-func (i *ItemUnit) HasExpiration() bool {
-	return !i.expiration.IsZero()
 }
 
 func (i *ItemUnit) UUID() uuid.UUID       { return i.uuid }
@@ -53,35 +42,44 @@ func (i *ItemUnit) Batch() uuid.UUID      { return i.batch }
 func (i *ItemUnit) Material() uuid.UUID   { return i.material }
 func (i *ItemUnit) Quantity() float64     { return i.quantity }
 func (i *ItemUnit) Expiration() time.Time { return i.expiration }
-func (i *ItemUnit) CreatedAt() time.Time  { return i.createdAt }
-func (i *ItemUnit) UpdatedAt() time.Time  { return i.updatedAt }
+
+func IsExpired(expiration time.Time) bool {
+	if expiration.IsZero() {
+		return false
+	}
+	return time.Now().After(expiration)
+}
+
+func HasExpiration(expiration time.Time) bool {
+	return !expiration.IsZero()
+}
 
 func (i *ItemUnit) SetBatch(batch uuid.UUID) error {
-	return entity.SetWithUpdate(&i.batch, batch, ProcessBatch, &i.updatedAt)
+	return entity.Set(&i.batch, batch, ProcessBatch)
 }
 
 func (i *ItemUnit) SetMaterial(material uuid.UUID) error {
-	return entity.SetWithUpdate(&i.material, material, ProcessMaterial, &i.updatedAt)
+	return entity.Set(&i.material, material, ProcessMaterial)
 }
 
 func (i *ItemUnit) SetQuantity(quantity float64) error {
-	return entity.SetWithUpdate(&i.quantity, quantity, ProcessQuantity, &i.updatedAt)
+	return entity.Set(&i.quantity, quantity, ProcessQuantity)
 }
 
 func (i *ItemUnit) SetExpiration(expiration time.Time) error {
-	return entity.SetWithUpdate(&i.expiration, expiration, ProcessExpiration, &i.updatedAt)
+	return entity.Set(&i.expiration, expiration, ProcessExpiration)
 }
 
 func ProcessBatch(batch uuid.UUID) (uuid.UUID, error) {
-	if batch == (uuid.UUID{}) {
-		return uuid.UUID{}, xerrors.ErrBatchEmpty
+	if batch.IsNil() {
+		return uuid.UUID{}, xerrors.ErrBatchNotFound
 	}
 	return batch, nil
 }
 
 func ProcessMaterial(material uuid.UUID) (uuid.UUID, error) {
-	if material == (uuid.UUID{}) {
-		return uuid.UUID{}, xerrors.ErrMaterialEmpty
+	if material.IsNil() {
+		return uuid.UUID{}, xerrors.ErrMaterialNotFound
 	}
 	return material, nil
 }

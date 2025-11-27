@@ -1,21 +1,18 @@
 package item
 
-import (
-	"github.com/alan-b-lima/almodon/internal/auth"
-	"github.com/alan-b-lima/almodon/pkg/uuid"
-)
+import "github.com/alan-b-lima/almodon/pkg/uuid"
 
 type Service interface {
-	List(act auth.Actor, req ListRequest) (ListResponse, error)
+	List(req ListParams) (Entities, error)
+	ListByBatch(uuid uuid.UUID) (Entities, error)
+	ListByMaterial(uuid uuid.UUID) (Entities, error)
 
-	Get(act auth.Actor, req GetRequest) (Response, error)
-	GetByBatch(act auth.Actor, req GetByBatchRequest) (ListResponse, error)
-	GetByMaterial(act auth.Actor, req GetByMaterialRequest) (ListResponse, error)
+	Get(uuid uuid.UUID) (Entity, error)
 
-	Create(act auth.Actor, req CreateRequest) (uuid.UUID, error)
+	Create(req Create) (uuid.UUID, error)
 
-	Patch(act auth.Actor, req PatchRequest) error
-	UpdateQuantity(act auth.Actor, req UpdateQuantityRequest) error
+	Patch(uuid uuid.UUID, req Patch) error
+	UpdateQuantity(uuid uuid.UUID,req UpdateQuantity) error
 
-	Delete(act auth.Actor, req DeleteRequest) error
+	Delete(uuid uuid.UUID) error
 }

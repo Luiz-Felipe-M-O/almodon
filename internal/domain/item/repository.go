@@ -39,11 +39,11 @@ type (
 	}
 
 	Patcher interface {
-		Patch(uuid uuid.UUID, PartialEntity) error
+		Patch(uuid.UUID, PartialEntity) error
 	}
 
 	Deleter interface {
-		Delete(uuid uuid.UUID) error
+		Delete(uuid.UUID) error
 	}
 )
 
@@ -54,8 +54,8 @@ type (
 		Material   uuid.UUID
 		Quantity   float64
 		Expiration time.Time
-		CreatedAt  time.Time
-		UpdatedAt  time.Time
+		Created    time.Time
+		Updated    time.Time
 	}
 
 	PartialEntity struct {
@@ -63,8 +63,7 @@ type (
 		Material   opt.Opt[uuid.UUID]
 		Quantity   opt.Opt[float64]
 		Expiration opt.Opt[time.Time]
-		CreatedAt  opt.Opt[time.Time]
-		UpdatedAt  opt.Opt[time.Time]
+		Updated    time.Time
 	}
 
 	Entities struct {
