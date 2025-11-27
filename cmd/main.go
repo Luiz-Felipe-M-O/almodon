@@ -34,7 +34,7 @@ func main() {
 		return
 	}
 	defer api.Close()
-	
+
 	srv := http.Server{Handler: middleware.LogTraffic(log, style, MakeMux(api))}
 	done := EnableGracefulShutdown(func() {
 		log.Info("Shutting server down...")
@@ -54,8 +54,10 @@ func main() {
 func MakeMux(api *api.Handler) *http.ServeMux {
 	mux := new(http.ServeMux)
 
-	mux.Handle("/", http.FileServer(http.Dir("../ui/web/")))
-	mux.Handle("/dist/{path}", ServeFile("../ui/web/dist/index.html"))
+	fs := http.FileServer(http.Dir("../ui/web/dist/"))
+	// index := ServeFile("../ui/web/dist/index.html")
+
+	mux.Handle("/", fs)
 	mux.Handle("/api/", api)
 	mux.HandleFunc("/terminate/{timeout}", Terminate)
 
