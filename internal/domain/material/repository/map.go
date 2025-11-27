@@ -74,12 +74,12 @@ func (m *Map) init() error {
 }
 
 func (m *Map) Close() error {
+	defer m.mu.Unlock()
+	m.mu.Lock()
+	
 	if m.datapath == "" {
 		return nil
 	}
-
-	defer m.mu.Unlock()
-	m.mu.Lock()
 
 	f, err := os.OpenFile(m.datapath, os.O_CREATE|os.O_WRONLY, 0o666)
 	if err != nil {
