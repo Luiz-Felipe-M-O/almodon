@@ -1,8 +1,12 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
+	materialrepo "github.com/alan-b-lima/almodon/internal/domain/material/repository"
+	materials "github.com/alan-b-lima/almodon/internal/domain/material/resource"
+	materialserve "github.com/alan-b-lima/almodon/internal/domain/material/service"
 	promotionrepo "github.com/alan-b-lima/almodon/internal/domain/promotion/repository"
 	promotions "github.com/alan-b-lima/almodon/internal/domain/promotion/resource"
 	promotionserve "github.com/alan-b-lima/almodon/internal/domain/promotion/service"
@@ -23,15 +27,18 @@ func New() (*Handler, error) {
 	var h Handler
 
 	var (
-		RepoPromotions          = promotionrepo.NewMap()
-		RepoSessions            = sessionrepo.NewMap()
-		RepoUsers, errRepoUsers = userrepo.NewPersistantMap("../.data/users.json")
+		RepoMaterials, errRepoMaterials = materialrepo.NewPersistentMap("../.data/materials.json")
+		RepoPromotions                  = promotionrepo.NewMap()
+		RepoSessions                    = sessionrepo.NewMap()
+		RepoUsers, errRepoUsers         = userrepo.NewPersistantMap("../.data/users.json")
 	)
-	if errRepoUsers != nil {
-		return nil, errRepoUsers
+	err := errors.Join(errRepoMaterials, errRepoUsers)
+	if err != nil {
+		return nil, err
 	}
 
 	var (
+		CoreMaterials  = &materialserve.Core{RepoMaterials}
 		CorePromotions = &promotionserve.Core{RepoPromotions, nil}
 		CoreSessions   = &sessionserve.Core{RepoSessions}
 		CoreUsers      = &userserve.Core{RepoUsers, CoreSessions, CorePromotions}
@@ -39,16 +46,19 @@ func New() (*Handler, error) {
 	CorePromotions.Users = CoreUsers
 
 	var (
+		ServiceMaterials  = materialserve.New(CoreMaterials)
 		ServicePromotions = promotionserve.New(CorePromotions)
 		ServiceUsers      = userserve.New(CoreUsers)
 	)
 
 	var (
+		materials  = materials.New(ServiceMaterials, ServiceUsers)
 		promotions = promotions.New(ServicePromotions, ServiceUsers)
 		users      = users.New(ServiceUsers)
 	)
 
 	resources := map[string]http.Handler{
+		"materials":  materials,
 		"promotions": promotions,
 		"users":      users,
 	}
@@ -58,14 +68,18 @@ func New() (*Handler, error) {
 	}
 
 	h.cleanup.BundleMany(
+		RepoMaterials,
 		RepoPromotions,
 		RepoSessions,
 		RepoUsers,
+		CoreMaterials,
 		CorePromotions,
 		CoreSessions,
 		CoreUsers,
+		ServiceMaterials,
 		ServicePromotions,
 		ServiceUsers,
+		materials,
 		promotions,
 		users,
 	)
