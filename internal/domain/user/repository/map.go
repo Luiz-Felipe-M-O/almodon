@@ -11,8 +11,8 @@ import (
 
 	"github.com/alan-b-lima/almodon/internal/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
+	"github.com/alan-b-lima/almodon/internal/support/repository"
 	"github.com/alan-b-lima/almodon/internal/xerrors"
-	"github.com/alan-b-lima/almodon/pkg/opt"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
@@ -178,9 +178,9 @@ func (m *Map) Patch(uuid uuid.UUID, user user.PartialEntity) error {
 		u.Role = role
 	}
 
-	some_then(&u.Name, user.Name)
-	some_then(&u.Email, user.Email)
-	some_then(&u.Password, user.Password)
+	repository.SomeThen(&u.Name, user.Name)
+	repository.SomeThen(&u.Email, user.Email)
+	repository.SomeThen(&u.Password, user.Password)
 
 	return nil
 }
@@ -221,15 +221,6 @@ func enough_chiefs(m *Map) bool {
 	}
 
 	return true
-}
-
-func some_then[F any](dst *F, src opt.Opt[F]) {
-	val, ok := src.Unwrap()
-	if !ok {
-		return
-	}
-
-	*dst = val
 }
 
 func clamp[T cmp.Ordered](mn, val, mx T) T {

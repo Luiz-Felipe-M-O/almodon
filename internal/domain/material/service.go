@@ -5,17 +5,16 @@ import (
 )
 
 type Service interface {
-	List(act auth.Actor, req ListRequest) (ListResponse, error)
+	List(req ListParams) (Entities, error)
+	ListBySIADS(siads string, req ListParams) (Entities, error)
+	ListByCATMAT(catmat string, req ListParams) (Entities, error)
+	ListByECampus(ecampus string, req ListParams) (Entities, error)
 
-	Get(act auth.Actor, req GetRequest) (Response, error)
-	ListBySIADS(act auth.Actor, req ListBySIADSRequest) (Response, error)
-	ListByCATMAT(act auth.Actor, req ListByCATMATRequest) (Response, error)
-	ListByECampus(act auth.Actor, req ListByECampusRequest) (Response, error)
+	Get(uuid uuid.UUID) (Entity, error)
 
-	Create(act auth.Actor, req CreateRequest) (uuid.UUID, error)
+	Create(req Create) (uuid.UUID, error)
 
-	Patch(act auth.Actor, req PatchRequest) error
-	UpdateMinQuantity(act auth.Actor, req UpdateMinQuantityRequest) error
+	Patch(uuid uuid.UUID, req Patch) error
 
-	Delete(act auth.Actor, req DeleteRequest) error
+	Delete(uuid uuid.UUID) error
 }

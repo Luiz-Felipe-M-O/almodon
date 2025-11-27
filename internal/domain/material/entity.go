@@ -1,13 +1,12 @@
 package material
 
 import (
-	"errors"
+	"strings"
+
 	"github.com/alan-b-lima/almodon/internal/support/entity"
 	"github.com/alan-b-lima/almodon/internal/xerrors"
+	"github.com/alan-b-lima/almodon/pkg/errors"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
-	"strings"
-	"time"
-	"unicode"
 )
 
 const (
@@ -88,17 +87,16 @@ type Material struct {
 	description string
 	unit        string
 	minQuantity float64
-	createdAt   time.Time
-	updatedAt   time.Time
 }
 
 func New(name, siads, catmat, ecampus, description, unit string, minQuantity float64) (Material, error) {
 	var m Material
+
 	err := errors.Join(
 		m.SetName(name),
 		m.SetSIADS(siads),
 		m.SetCATMAT(catmat),
-		m.SetECAMPUS(ecampus),
+		m.SetECampus(ecampus),
 		m.SetDescription(description),
 		m.SetUnit(unit),
 		m.SetMinQuantity(minQuantity),
@@ -106,14 +104,13 @@ func New(name, siads, catmat, ecampus, description, unit string, minQuantity flo
 	if err != nil {
 		return Material{}, xerrors.ErrMaterialCreation.New(err)
 	}
+
 	m.uuid = uuid.NewUUIDv7()
-	m.createdAt = time.Now()
-	m.updatedAt = time.Now()
 	return m, nil
 }
 
-func (m *Material) IsBelowMinimum(currentQuantity float64) bool {
-	return currentQuantity < m.minQuantity
+func (m *Material) IsBelowMinimum(quantity float64) bool {
+	return quantity < m.minQuantity
 }
 
 func (m *Material) UUID() uuid.UUID      { return m.uuid }
@@ -124,35 +121,33 @@ func (m *Material) ECampus() string      { return m.ecampus }
 func (m *Material) Description() string  { return m.description }
 func (m *Material) Unit() string         { return m.unit }
 func (m *Material) MinQuantity() float64 { return m.minQuantity }
-func (m *Material) CreatedAt() time.Time { return m.createdAt }
-func (m *Material) UpdatedAt() time.Time { return m.updatedAt }
 
 func (m *Material) SetName(name string) error {
-	return entity.SetWithUpdate(&m.name, name, ProcessName, &m.updatedAt)
+	return entity.Set(&m.name, name, ProcessName)
 }
 
 func (m *Material) SetSIADS(siads string) error {
-	return entity.SetWithUpdate(&m.siads, siads, ProcessSIADS, &m.updatedAt)
+	return entity.Set(&m.siads, siads, ProcessSIADS)
 }
 
 func (m *Material) SetCATMAT(catmat string) error {
-	return entity.SetWithUpdate(&m.catmat, catmat, ProcessCATMAT, &m.updatedAt)
+	return entity.Set(&m.catmat, catmat, ProcessCATMAT)
 }
 
-func (m *Material) SetECAMPUS(ecampus string) error {
-	return entity.SetWithUpdate(&m.ecampus, ecampus, ProcessECAMPUS, &m.updatedAt)
+func (m *Material) SetECampus(ecampus string) error {
+	return entity.Set(&m.ecampus, ecampus, ProcessECampus)
 }
 
 func (m *Material) SetDescription(description string) error {
-	return entity.SetWithUpdate(&m.description, description, ProcessDescription, &m.updatedAt)
+	return entity.Set(&m.description, description, ProcessDescription)
 }
 
 func (m *Material) SetUnit(unit string) error {
-	return entity.SetWithUpdate(&m.unit, unit, ProcessUnit, &m.updatedAt)
+	return entity.Set(&m.unit, unit, ProcessUnit)
 }
 
 func (m *Material) SetMinQuantity(minQuantity float64) error {
-	return entity.SetWithUpdate(&m.minQuantity, minQuantity, ProcessMinQuantity, &m.updatedAt)
+	return entity.Set(&m.minQuantity, minQuantity, ProcessMinQuantity)
 }
 
 func ProcessName(name string) (string, error) {
@@ -163,15 +158,27 @@ func ProcessName(name string) (string, error) {
 }
 
 func ProcessSIADS(siads string) (string, error) {
-	return processIdNumber(siads, siadsLength)
+	id, err := processIdNumber(siads, siadsLength, siadsLength)
+	if err != nil {
+		return "", xerrors.ErrSIADSInvalid.New(err)
+	}
+	return id, nil
 }
 
 func ProcessCATMAT(catmat string) (string, error) {
-	return processIdNumber(catmat, catmatLength)
+	id, err := processIdNumber(catmat, catmatLength, catmatLength)
+	if err != nil {
+		return "", xerrors.ErrCATMATInvalid.New(err)
+	}
+	return id, nil
 }
 
-func ProcessECAMPUS(ecampus string) (string, error) {
-	return processIdNumber(ecampus, ecampusLength)
+func ProcessECampus(ecampus string) (string, error) {
+	id, err := processIdNumber(ecampus, 1, ecampusLength)
+	if err != nil {
+		return "", xerrors.ErrECampusInvalid.New(err)
+	}
+	return id, nil
 }
 
 func ProcessDescription(description string) (string, error) {
@@ -205,7 +212,7 @@ func ProcessUnit(unit string) (string, error) {
 
 func ProcessMinQuantity(minQuantity float64) (float64, error) {
 	if minQuantity < 0 {
-		return 0, xerrors.ErrNegativeMinQuantity
+		return 0, xerrors.ErrMinQuantityNegative
 	}
 	return minQuantity, nil
 }
@@ -244,19 +251,25 @@ func normalizeUnit(input string) (string, error) {
 	return "", xerrors.ErrUnitNotFound
 }
 
-func processIdNumber(id string, expectedLength int) (string, error) {
-	if len(id) > expectedLength {
-		return "", xerrors.ErrInvalidIdLength
+func processIdNumber(id string, min, max int) (string, error) {
+	if min == max && len(id) != min {
+		return "", xerrors.ErrInvalidIdLength.New(min)
 	}
-	if !isAllDigits(id) {
+
+	if min != max && (len(id) < min || max < len(id)) {
+		return "", xerrors.ErrInvalidIdLengthRange.New(min, max)
+	}
+
+	if !numerical(id) {
 		return "", xerrors.ErrIdContainsNonDigits
 	}
+
 	return id, nil
 }
 
-func isAllDigits(s string) bool {
+func numerical(s string) bool {
 	for _, r := range s {
-		if !unicode.IsDigit(r) {
+		if r < '0' || '9' < r {
 			return false
 		}
 	}

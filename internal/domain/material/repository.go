@@ -3,17 +3,16 @@ package material
 import (
 	"time"
 
-	"github.com/alan-b-lima/almodon/internal/auth"
 	"github.com/alan-b-lima/almodon/pkg/opt"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
 type Repository interface {
 	Lister
-	Getter
 	ListerBySIADS
 	ListerByCATMAT
-	ListerByECAMPUS
+	ListerByECampus
+	Getter
 	Creater
 	Patcher
 	Deleter
@@ -24,10 +23,6 @@ type (
 		List(offset, limit int) (Entities, error)
 	}
 
-	Getter interface {
-		Get(uuid uuid.UUID) (Entity, error)
-	}
-
 	ListerBySIADS interface {
 		ListBySIADS(siads string) (Entities, error)
 	}
@@ -36,8 +31,12 @@ type (
 		ListByCATMAT(catmat string) (Entities, error)
 	}
 
-	ListerByECAMPUS interface {
-		ListByECAMPUS(ecampus string) (Entities, error)
+	ListerByECampus interface {
+		ListByECampus(ecampus string) (Entities, error)
+	}
+
+	Getter interface {
+		Get(uuid uuid.UUID) (Entity, error)
 	}
 
 	Creater interface {
@@ -45,7 +44,7 @@ type (
 	}
 
 	Patcher interface {
-		Patch(uuid uuid.UUID, PartialEntity) error
+		Patch(uuid.UUID, PartialEntity) error
 	}
 
 	Deleter interface {
@@ -54,35 +53,17 @@ type (
 )
 
 type (
-	Entity struct {
-		UUID        uuid.UUID
-		Name        string
-		SIADS       string
-		CATMAT      string
-		ECAMPUS     string
-		Description string
-		Unit        string
-		MinQuantity float64
-		CreatedAt   time.Time
-		UpdatedAt   time.Time
-	}
+	Entities = ListResult
+	Entity   = Result
 
 	PartialEntity struct {
 		Name        opt.Opt[string]
 		SIADS       opt.Opt[string]
 		CATMAT      opt.Opt[string]
-		ECAMPUS     opt.Opt[string]
+		ECampus     opt.Opt[string]
 		Description opt.Opt[string]
 		Unit        opt.Opt[string]
 		MinQuantity opt.Opt[float64]
-		CreatedAt   opt.Opt[time.Time]
-		UpdatedAt   opt.Opt[time.Time]
-	}
-
-	Entities struct {
-		Offset       int
-		Length       int
-		Records      []Entity
-		TotalRecords int
+		Updated     time.Time
 	}
 )
