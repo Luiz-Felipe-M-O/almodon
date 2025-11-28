@@ -151,12 +151,7 @@ func (rc *Resource) Authenticate(w http.ResponseWriter, r *http.Request) {
 
 func (rc *Resource) Me(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(rc.Ident, func(act auth.Actor) (user.Result, error) {
-		uuid, err := uuid.FromString(r.PathValue("uuid"))
-		if err != nil {
-			return user.Result{}, xerrors.ErrBadUUID
-		}
-
-		ent, err := rc.Users.Permit(act).Get(uuid)
+		ent, err := rc.Users.Permit(act).Get(act.User())
 		if err != nil {
 			return user.Result{}, err
 		}

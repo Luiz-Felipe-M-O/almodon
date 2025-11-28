@@ -54,10 +54,8 @@ func main() {
 func MakeMux(api *api.Handler) *http.ServeMux {
 	mux := new(http.ServeMux)
 
-	fs := http.FileServer(http.Dir("../ui/web/dist/"))
-	// index := ServeFile("../ui/web/dist/index.html")
-
-	mux.Handle("/", fs)
+	mux.Handle("/", http.FileServer(http.Dir("../ui/web/dist/")))
+	mux.Handle("/src/", http.StripPrefix("/src/", http.FileServer(http.Dir("../ui/web/src/"))))
 	mux.Handle("/api/", api)
 	mux.HandleFunc("/terminate/{timeout}", Terminate)
 
