@@ -1,6 +1,6 @@
 const OriginToRoot: Record<string, { client: string, server: string }> = {
     "http://localhost:3000": {
-        client: "http://localhost:3000/",
+        client: "http://localhost:3000/dist/",
         server: "",
     },
     "http://localhost:4545": {
@@ -8,7 +8,7 @@ const OriginToRoot: Record<string, { client: string, server: string }> = {
         server: "http://localhost:4545/api/v1/",
     },
     "https://alan-b-lima.github.io": {
-        client: "https://alan-b-lima.github.io/almodon/ui/web/",
+        client: "https://alan-b-lima.github.io/almodon/ui/web/dist/",
         server: "",
     },
 }
