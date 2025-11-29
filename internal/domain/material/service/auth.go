@@ -16,13 +16,56 @@ func New(service material.Service) material.Service {
 	return &Gate{Service: service}
 }
 
-var permAdmin = auth.Permit(auth.Admin)
+var (
+	permUser  = auth.Permit(auth.User)
+	permAdmin = auth.Permit(auth.Admin)
+)
 
 func (s *Gate) Allow(act auth.Actor) material.Service {
 	return &Gate{
 		Service: s.Service,
 		actor:   act,
 	}
+}
+
+func (s *Gate) List(req material.ListParams) (material.Entities, error) {
+	if err := service.Authorize(permUser, s.actor); err != nil {
+		return material.Entities{}, err
+	}
+
+	return s.Service.List(req)
+}
+
+func (s *Gate) ListByCATMAT(catmat string, req material.ListParams) (material.Entities, error) {
+	if err := service.Authorize(permUser, s.actor); err != nil {
+		return material.Entities{}, err
+	}
+
+	return s.Service.ListByCATMAT(catmat, req)
+}
+
+func (s *Gate) ListByECampus(ecampus string, req material.ListParams) (material.Entities, error) {
+	if err := service.Authorize(permUser, s.actor); err != nil {
+		return material.Entities{}, err
+	}
+
+	return s.Service.ListByECampus(ecampus, req)
+}
+
+func (s *Gate) ListBySIADS(siads string, req material.ListParams) (material.Entities, error) {
+	if err := service.Authorize(permUser, s.actor); err != nil {
+		return material.Entities{}, err
+	}
+
+	return s.Service.ListBySIADS(siads, req)
+}
+
+func (s *Gate) Get(uuid uuid.UUID) (material.Entity, error) {
+	if err := service.Authorize(permUser, s.actor); err != nil {
+		return material.Entity{}, err
+	}
+
+	return s.Service.Get(uuid)
 }
 
 func (s *Gate) Create(req material.Create) (uuid.UUID, error) {
