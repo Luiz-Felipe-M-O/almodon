@@ -15,6 +15,14 @@ export class Dialog {
         this.#buttons = buttons
     }
 
+    Opened(): boolean {
+        if (this.#build === null) {
+            return false
+        }
+
+        return this.#build.open
+    }
+
     Show(): void {
         if (this.#build === null) {
             this.HTML()
@@ -73,5 +81,8 @@ export class Dialog {
         this.#build.close()
         this.#build.remove()
         this.#build = null
+
+        this.#body = null as unknown as HTMLElement
+        this.#buttons = null as unknown as HTMLElement[]
     }
 }
