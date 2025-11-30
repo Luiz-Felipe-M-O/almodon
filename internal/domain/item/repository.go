@@ -10,8 +10,8 @@ import (
 type Repository interface {
 	Lister
 	Getter
-	ListerByBatch
 	ListerByMaterial
+	ListerBySupplier
 	Creater
 	Patcher
 	Deleter
@@ -26,12 +26,12 @@ type (
 		Get(uuid uuid.UUID) (Entity, error)
 	}
 
-	ListerByBatch interface {
-		ListByBatch(batch uuid.UUID) (Entities, error)
-	}
-
 	ListerByMaterial interface {
 		ListByMaterial(material uuid.UUID) (Entities, error)
+	}
+
+	ListerBySupplier interface {
+		ListBySupplier(supplier uuid.UUID) (Entities, error)
 	}
 
 	Creater interface {
@@ -50,19 +50,29 @@ type (
 type (
 	Entity struct {
 		UUID       uuid.UUID
-		Batch      uuid.UUID
 		Material   uuid.UUID
+		Supplier   uuid.UUID
 		Quantity   float64
+		UnitCost   float64
+		Arrival    time.Time
 		Expiration time.Time
+		Invoice    string
+		Lot        string
+		Notes      string
 		Created    time.Time
 		Updated    time.Time
 	}
 
 	PartialEntity struct {
-		Batch      opt.Opt[uuid.UUID]
 		Material   opt.Opt[uuid.UUID]
+		Supplier   opt.Opt[uuid.UUID]
 		Quantity   opt.Opt[float64]
+		UnitCost   opt.Opt[float64]
+		Arrival    opt.Opt[time.Time]
 		Expiration opt.Opt[time.Time]
+		Invoice    opt.Opt[string]
+		Lot        opt.Opt[string]
+		Notes      opt.Opt[string]
 		Updated    time.Time
 	}
 
