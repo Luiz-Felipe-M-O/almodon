@@ -1,12 +1,15 @@
 import { APIError } from "../../../../module/errors/error.ts"
+import { Role } from "../../../auth/auth.ts"
 
 type User = {
     uuid: UUID
-    siape: number
+    siape: string
     name: string
     email: string
     password: string
-    role: string
+    role: Role
+    created: Date
+    updated: Date
 }
 
 export class UserGateway implements user.Gateway {
@@ -17,51 +20,63 @@ export class UserGateway implements user.Gateway {
         this.#users = [
             {
                 uuid: "019a921e-02ff-7cfb-6c98-a9d888ebe4a2",
-                siape: 1,
+                siape: "0000001",
                 name: "Alan Lima",
                 email: "alan-lima.al@ufvjm.edu.br",
                 password: "12345678",
-                role: "chief"
+                role: "chief",
+                created: new Date(),
+                updated: new Date(),
             },
             {
                 uuid: "019a921e-3fb1-7d33-5b88-9b569416db4c",
-                siape: 2,
+                siape: "0000002",
                 name: "Breno",
                 email: "breno@ufvjm.edu.br",
                 password: "12345678",
-                role: "admin"
+                role: "admin",
+                created: new Date(),
+                updated: new Date(),
             },
             {
                 uuid: "019a9220-d660-7e60-70d5-7dc1dc580a02",
-                siape: 3,
+                siape: "0000003",
                 name: "Luiz",
                 email: "lf@ufvjm.edu.br",
                 password: "12345678",
-                role: "user"
+                role: "user",
+                created: new Date(),
+                updated: new Date(),
             },
             {
                 uuid: "019a9798-2c46-74e0-5dea-3c7c98a45599",
-                siape: 4,
+                siape: "0000004",
                 name: "Rafael",
                 email: "r@ufvjm.edu.br",
                 password: "12345678",
-                role: "user"
+                role: "user",
+                created: new Date(),
+                updated: new Date(),
             },
             {
                 uuid: "019a9f7c-ad1b-70a7-49a3-58828f3b66d6",
-                siape: 5,
+                siape: "0000005",
                 name: "Otávio Calazans",
                 email: "tavinhogomesoficial@hotmail.com",
                 password: "12345678",
-                role: "user"
+                role: "user",
+                created: new Date(),
+                updated: new Date(),
             },
             {
                 uuid: "019aa844-0fbf-78d9-7422-caf8961a8ccb",
-                siape: 6,
+                siape: "0000006",
                 name: "Lucas",
                 email: "rocha@ufvjm.edu.br",
                 password: "12345678",
-                role: "admin"
+                role: "admin",
+                created: new Date(),
+                updated: new Date(),
             }
         ]
 
@@ -78,6 +93,8 @@ export class UserGateway implements user.Gateway {
             name: user.name,
             email: user.email,
             role: user.role,
+            created: user.created,
+            updated: user.updated,
         }))
 
         return {
@@ -97,6 +114,8 @@ export class UserGateway implements user.Gateway {
                     name: user.name,
                     email: user.email,
                     role: user.role,
+                    created: user.created,
+                    updated: user.updated,
                 }
             }
         }
@@ -104,7 +123,7 @@ export class UserGateway implements user.Gateway {
         throw APIError.New("not found", "user-not-found", `user with UUID ${uuid} not found`)
     }
 
-    async GetBySIAPE(siape: number): Promise<user.Response> {
+    async GetBySIAPE(siape: string): Promise<user.Response> {
         for (const user of this.#users) {
             if (user.siape === siape) {
                 return {
@@ -113,6 +132,8 @@ export class UserGateway implements user.Gateway {
                     name: user.name,
                     email: user.email,
                     role: user.role,
+                    created: user.created,
+                    updated: user.updated,
                 }
             }
         }
@@ -133,7 +154,9 @@ export class UserGateway implements user.Gateway {
             name: req.name,
             email: req.email,
             password: req.password,
-            role: req.role,
+            role: req.role as Role,
+            created: new Date(),
+            updated: new Date(),
         })
 
         return uuid
@@ -146,6 +169,9 @@ export class UserGateway implements user.Gateway {
                 if (req.name !== undefined) { user.name = req.name }
                 if (req.email !== undefined) { user.email = req.email }
             }
+
+            user.updated = new Date()
+            return
         }
 
         throw APIError.New("not found", "user-not-found", `user with UUID ${uuid} not found`)
@@ -159,7 +185,7 @@ export class UserGateway implements user.Gateway {
         }
     }
 
-    async Autheticate(siape: number, password: string): Promise<user.AuthResponse> {
+    async Autheticate(siape: string, password: string): Promise<user.AuthResponse> {
         let user: User | undefined = undefined
         for (const u of this.#users) {
             if (u.siape === siape) {
@@ -179,13 +205,17 @@ export class UserGateway implements user.Gateway {
         const expires = 3600 * 1000
 
         setTimeout(() => { this.#session = null }, expires)
-        this.#session = session
+        this.#session = user.uuid
 
         return {
             uuid: session,
             user: user.uuid,
             expires: new Date(Date.now() + expires),
         }
+    }
+
+    async Logout(): Promise<void> {
+        this.#session = null
     }
 
     async Me(): Promise<user.Response> {

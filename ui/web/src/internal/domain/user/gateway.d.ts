@@ -2,23 +2,25 @@ namespace user {
     interface Gateway {
         List(offset: number, limit: number): Promise<ListResponse>
         Get(uuid: UUID): Promise<Response>
+        GetBySIAPE(siape: string): Promise<Response>
         Create(req: Entity): Promise<UUID>
         Patch(uuid: UUID, req: PartialEntity): Promise<void>
         Delete(uuid: UUID): Promise<void>
-        Autheticate(siape: number, password: string): Promise<AuthResponse>
+        Autheticate(siape: string, password: string): Promise<AuthResponse>
+        Logout(): Promise<void>
         Me(): Promise<Response>
     }
 
     type Entity = {
-        siape: number
+        siape: string
         name: string
         email: string
         password: string
-        role: string
+        role: Role
     }
 
     type PartialEntity = {
-        siape?: number
+        siape?: string
         name?: string
         email?: string
     }
@@ -32,10 +34,12 @@ namespace user {
 
     type Response = {
         uuid: UUID
-        siape: number
+        siape: string
         name: string
         email: string
-        role: string
+        role: Role
+        created: Date
+        updated: Date
     }
 
     type AuthResponse = {
