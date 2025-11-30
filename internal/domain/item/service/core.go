@@ -20,12 +20,12 @@ func (c *Core) List(req item.ListParams) (item.Entities, error) {
 	return c.Items.List(req.Offset, req.Limit)
 }
 
-func (c *Core) ListByBatch(uuid uuidpkg.UUID) (item.Entities, error) {
-	return c.Items.ListByBatch(uuid)
-}
-
 func (c *Core) ListByMaterial(uuid uuidpkg.UUID) (item.Entities, error) {
 	return c.Items.ListByMaterial(uuid)
+}
+
+func (c *Core) ListBySupplier(uuid uuidpkg.UUID) (item.Entities, error) {
+	return c.Items.ListBySupplier(uuid)
 }
 
 func (c *Core) Get(uuid uuidpkg.UUID) (item.Entity, error) {
@@ -33,43 +33,91 @@ func (c *Core) Get(uuid uuidpkg.UUID) (item.Entity, error) {
 }
 
 func (c *Core) Create(req item.Create) (uuidpkg.UUID, error) {
-	u, err := item.New(req.Batch, req.Material, req.Quantity, req.Expiration)
+	batch, err := item.New(
+		req.Material,
+		req.Supplier,
+		req.Quantity,
+		req.UnitCost,
+		req.Arrival,
+		req.Expiration,
+		req.Invoice,
+		req.Lot,
+		req.Notes,
+	)
 	if err != nil {
 		return uuidpkg.UUID{}, err
 	}
 
-	ent := translate(&u)
+	ent := translate(&batch)
 
 	now := time.Now()
 	ent.Created = now
 	ent.Updated = now
 
-	return u.UUID(), c.Items.Create(ent)
+	return batch.UUID(), c.Items.Create(ent)
 }
 
 func (c *Core) Patch(uuid uuidpkg.UUID, req item.Patch) error {
-	return patch(c.Items, uuid, req.Batch, req.Material, req.Quantity, req.Expiration)
+	return patch(
+		c.Items,
+		uuid,
+		req.Material,
+		req.Supplier,
+		req.Quantity,
+		req.UnitCost,
+		req.Arrival,
+		req.Expiration,
+		req.Invoice,
+		req.Lot,
+		req.Notes,
+	)
 }
 
 func (c *Core) UpdateQuantity(uuid uuidpkg.UUID, req item.UpdateQuantity) error {
-	var uuid_ opt.Opt[uuidpkg.UUID]
-	var expiration opt.Opt[time.Time]
+	var emptyUUID opt.Opt[uuidpkg.UUID]
+	var emptyFloat opt.Opt[float64]
+	var emptyTime opt.Opt[time.Time]
+	var emptyString opt.Opt[string]
 
-	return patch(c.Items, uuid, uuid_, uuid_, opt.Some(req.Quantity), expiration)
+	return patch(
+		c.Items,
+		uuid,
+		emptyUUID,
+		emptyUUID,
+		opt.Some(req.Quantity),
+		emptyFloat,
+		emptyTime,
+		emptyTime,
+		emptyString,
+		emptyString,
+		emptyString,
+	)
 }
 
 func (c *Core) Delete(uuid uuidpkg.UUID) error {
 	return c.Items.Delete(uuid)
 }
 
-func patch(repo item.Patcher, uuid uuidpkg.UUID, batch, material opt.Opt[uuidpkg.UUID], quantity opt.Opt[float64], expiration opt.Opt[time.Time]) error {
+func patch(
+	repo item.Patcher,
+	uuid uuidpkg.UUID,
+	material, supplier opt.Opt[uuidpkg.UUID],
+	quantity, unitCost opt.Opt[float64],
+	arrival, expiration opt.Opt[time.Time],
+	invoice, lot, notes opt.Opt[string],
+) error {
 	var pi item.PartialEntity
 
 	err := errors.Join(
-		entity.SomeThen(&pi.Batch, batch, item.ProcessBatch),
 		entity.SomeThen(&pi.Material, material, item.ProcessMaterial),
+		entity.SomeThen(&pi.Supplier, supplier, item.ProcessSupplier),
 		entity.SomeThen(&pi.Quantity, quantity, item.ProcessQuantity),
+		entity.SomeThen(&pi.UnitCost, unitCost, item.ProcessUnitCost),
+		entity.SomeThen(&pi.Arrival, arrival, item.ProcessArrival),
 		entity.SomeThen(&pi.Expiration, expiration, item.ProcessExpiration),
+		entity.SomeThen(&pi.Invoice, invoice, item.ProcessInvoice),
+		entity.SomeThen(&pi.Lot, lot, item.ProcessLot),
+		entity.SomeThen(&pi.Notes, notes, item.ProcessNotes),
 	)
 	if err != nil {
 		return err
@@ -80,12 +128,17 @@ func patch(repo item.Patcher, uuid uuidpkg.UUID, batch, material opt.Opt[uuidpkg
 	return repo.Patch(uuid, pi)
 }
 
-func translate(i *item.ItemUnit) item.Entity {
+func translate(i *item.ItemBatch) item.Entity {
 	return item.Entity{
 		UUID:       i.UUID(),
-		Batch:      i.Batch(),
 		Material:   i.Material(),
+		Supplier:   i.Supplier(),
 		Quantity:   i.Quantity(),
+		UnitCost:   i.UnitCost(),
+		Arrival:    i.Arrival(),
 		Expiration: i.Expiration(),
+		Invoice:    i.Invoice(),
+		Lot:        i.Lot(),
+		Notes:      i.Notes(),
 	}
 }

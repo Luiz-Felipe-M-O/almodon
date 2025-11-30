@@ -14,8 +14,8 @@ import (
 
 type Map struct {
 	uuid     repo.Index[uuid.UUID, int]
-	batch    repo.SliceIndex[uuid.UUID, int]
 	material repo.SliceIndex[uuid.UUID, int]
+	supplier repo.SliceIndex[uuid.UUID, int]
 
 	repo []item.Entity
 	mu   sync.RWMutex
@@ -26,8 +26,8 @@ type Map struct {
 func NewMap() item.Repository {
 	repo := Map{
 		uuid:     make(repo.Index[uuid.UUID, int]),
-		batch:    make(repo.SliceIndex[uuid.UUID, int]),
 		material: make(repo.SliceIndex[uuid.UUID, int]),
+		supplier: make(repo.SliceIndex[uuid.UUID, int]),
 	}
 
 	return &repo
@@ -36,8 +36,8 @@ func NewMap() item.Repository {
 func NewPersistentMap(datapath string) (item.Repository, error) {
 	repo := Map{
 		uuid:     make(repo.Index[uuid.UUID, int]),
-		batch:    make(repo.SliceIndex[uuid.UUID, int]),
 		material: make(repo.SliceIndex[uuid.UUID, int]),
+		supplier: make(repo.SliceIndex[uuid.UUID, int]),
 		datapath: datapath,
 	}
 
@@ -62,8 +62,8 @@ func (m *Map) init() error {
 	for i, record := range m.repo {
 		m.uuid[record.UUID] = i
 
-		m.batch.Add(record.Batch, i)
 		m.material.Add(record.Material, i)
+		m.supplier.Add(record.Supplier, i)
 	}
 
 	return nil
@@ -119,11 +119,11 @@ func (m *Map) List(offset, limit int) (item.Entities, error) {
 	}, nil
 }
 
-func (m *Map) ListByBatch(batch uuid.UUID) (item.Entities, error) {
+func (m *Map) ListByMaterial(material uuid.UUID) (item.Entities, error) {
 	defer m.mu.RUnlock()
 	m.mu.RLock()
 
-	indices, in := m.batch.Get(batch)
+	indices, in := m.material.Get(material)
 	if !in || len(indices) == 0 {
 		return item.Entities{
 			Records:      []item.Entity{},
@@ -144,11 +144,11 @@ func (m *Map) ListByBatch(batch uuid.UUID) (item.Entities, error) {
 	}, nil
 }
 
-func (m *Map) ListByMaterial(material uuid.UUID) (item.Entities, error) {
+func (m *Map) ListBySupplier(supplier uuid.UUID) (item.Entities, error) {
 	defer m.mu.RUnlock()
 	m.mu.RLock()
 
-	indices, in := m.material.Get(material)
+	indices, in := m.supplier.Get(supplier)
 	if !in || len(indices) == 0 {
 		return item.Entities{
 			Records:      []item.Entity{},
@@ -188,8 +188,8 @@ func (m *Map) Create(itm item.Entity) error {
 	index := len(m.repo)
 
 	m.uuid.Set(itm.UUID, index)
-	m.batch.Add(itm.Batch, index)
 	m.material.Add(itm.Material, index)
+	m.supplier.Add(itm.Supplier, index)
 
 	m.repo = append(m.repo, itm)
 	return nil
@@ -206,20 +206,25 @@ func (m *Map) Patch(uuid uuid.UUID, partial item.PartialEntity) error {
 
 	item := &m.repo[index]
 
-	if batch, ok := partial.Batch.Unwrap(); ok {
-		m.batch.Del(item.Batch, index)
-		m.batch.Add(batch, index)
-		item.Batch = batch
-	}
-
 	if material, ok := partial.Material.Unwrap(); ok {
 		m.material.Del(item.Material, index)
 		m.material.Add(material, index)
 		item.Material = material
 	}
 
+	if supplier, ok := partial.Supplier.Unwrap(); ok {
+		m.supplier.Del(item.Supplier, index)
+		m.supplier.Add(supplier, index)
+		item.Supplier = supplier
+	}
+
 	repo.SomeThen(&item.Quantity, partial.Quantity)
+	repo.SomeThen(&item.UnitCost, partial.UnitCost)
+	repo.SomeThen(&item.Arrival, partial.Arrival)
 	repo.SomeThen(&item.Expiration, partial.Expiration)
+	repo.SomeThen(&item.Invoice, partial.Invoice)
+	repo.SomeThen(&item.Lot, partial.Lot)
+	repo.SomeThen(&item.Notes, partial.Notes)
 	item.Updated = partial.Updated
 
 	return nil
@@ -237,8 +242,8 @@ func (m *Map) Delete(uuid uuid.UUID) error {
 	itm := &m.repo[index]
 
 	delete(m.uuid, itm.UUID)
-	m.batch.Del(itm.Batch, index)
 	m.material.Del(itm.Material, index)
+	m.supplier.Del(itm.Supplier, index)
 
 	lastIndex := len(m.repo) - 1
 	if index != lastIndex {
@@ -247,8 +252,8 @@ func (m *Map) Delete(uuid uuid.UUID) error {
 		lastItm := &m.repo[index]
 
 		m.uuid.Set(lastItm.UUID, index)
-		m.batch.Swap(lastItm.Batch, lastIndex, index)
 		m.material.Swap(lastItm.Material, lastIndex, index)
+		m.supplier.Swap(lastItm.Supplier, lastIndex, index)
 	}
 
 	m.repo = m.repo[:lastIndex]

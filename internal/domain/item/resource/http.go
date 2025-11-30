@@ -26,8 +26,8 @@ func New(items item.Service, ident auth.Identifier) http.Handler {
 	routes := map[string]http.HandlerFunc{
 		"GET /items/{$}":                   rc.List,
 		"GET /items/{uuid}":                rc.Get,
-		"GET /items/batch/{uuid}":          rc.ListByBatch,
 		"GET /items/material/{uuid}":       rc.ListByMaterial,
+		"GET /items/supplier/{uuid}":       rc.ListBySupplier,
 		"POST /items/{$}":                  rc.Create,
 		"PATCH /items/{uuid}":              rc.Patch,
 		"PATCH /items/{uuid}/quantity/{$}": rc.UpdateQuantity,
@@ -84,14 +84,14 @@ func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
 	}, w, r)
 }
 
-func (rc *Resource) ListByBatch(w http.ResponseWriter, r *http.Request) {
+func (rc *Resource) ListByMaterial(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(rc.Ident, func(act auth.Actor) (item.ListResult, error) {
-		batch, err := uuid.FromString(r.PathValue("uuid"))
+		material, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
 			return item.ListResult{}, xerrors.ErrBadUUID
 		}
 
-		ent, err := rc.Items.Permit(act).ListByBatch(batch)
+		ent, err := rc.Items.Permit(act).ListByMaterial(material)
 		if err != nil {
 			return item.ListResult{}, err
 		}
@@ -110,14 +110,14 @@ func (rc *Resource) ListByBatch(w http.ResponseWriter, r *http.Request) {
 	}, w, r)
 }
 
-func (rc *Resource) ListByMaterial(w http.ResponseWriter, r *http.Request) {
+func (rc *Resource) ListBySupplier(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(rc.Ident, func(act auth.Actor) (item.ListResult, error) {
-		material, err := uuid.FromString(r.PathValue("uuid"))
+		supplier, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
 			return item.ListResult{}, xerrors.ErrBadUUID
 		}
 
-		ent, err := rc.Items.Permit(act).ListByMaterial(material)
+		ent, err := rc.Items.Permit(act).ListBySupplier(supplier)
 		if err != nil {
 			return item.ListResult{}, err
 		}
@@ -183,12 +183,18 @@ func (rc *Resource) Delete(w http.ResponseWriter, r *http.Request) {
 func transform(e *item.Entity) item.Result {
 	return item.Result{
 		UUID:          e.UUID,
-		Batch:         e.Batch,
 		Material:      e.Material,
+		Supplier:      e.Supplier,
 		Quantity:      e.Quantity,
+		UnitCost:      e.UnitCost,
+		Arrival:       e.Arrival,
 		Expiration:    e.Expiration,
+		Invoice:       e.Invoice,
+		Lot:           e.Lot,
+		Notes:         e.Notes,
 		IsExpired:     item.IsExpired(e.Expiration),
 		HasExpiration: item.HasExpiration(e.Expiration),
+		IsAvailable:   e.Quantity > 0 && !item.IsExpired(e.Expiration),
 		Created:       e.Created,
 		Updated:       e.Updated,
 	}
