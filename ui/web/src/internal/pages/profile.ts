@@ -125,11 +125,14 @@ export default class ProfileView {
             this.#login_form = login_form(this.login.bind(this))
         }
 
-        const form = this.#login_form.HTML().querySelector("form")!
-        form.querySelector<HTMLElement>(".reporter")?.replaceChildren()
-        form.reset()
+        if (!this.#login_form.Opened()) {
+            const form = this.#login_form.HTML().querySelector("form")!
 
-        this.#login_form.Show()
+            form.querySelector<HTMLElement>(".reporter")?.replaceChildren()
+            form.reset()
+
+            this.#login_form.Show()
+        }
 
         if (this.#logged_out_page === null) {
             const login = jsxmm.Element("button", { className: "button create", textContent: "Entrar" })
