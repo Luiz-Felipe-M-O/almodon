@@ -8,7 +8,7 @@ export function Form(...children: HTMLElement[]) {
 }
 
 export function FormField(label: string, name: string, input: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) {
-    input.classList.add("value", "editable")
+    input.classList.add("value", "editable", name)
     input.name = name
 
     return jsxmm.Element("div", { className: "field" },

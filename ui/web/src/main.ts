@@ -2,6 +2,7 @@ import { Construct } from "./internal/api.ts"
 import { Admin, Chief, Promoted, Role, Unlogged, User } from "./internal/auth/auth.ts"
 import { ClickForKeys, ListenClickAndKeys } from "./internal/component/common.ts"
 import { Context, Orquestrator, resouce, StaticPage } from "./internal/context/context.ts"
+import MaterialView from "./internal/domain/material/view.ts"
 import UserView from "./internal/domain/user/view.ts"
 import ProfileView from "./internal/pages/profile.ts"
 import Source from "./internal/support/source.ts"
@@ -28,10 +29,11 @@ async function main(): Promise<void> {
         new Signal.Effect(effect_user.bind(null, profiles[i], user))
     }
 
-    profile.HTML()
+    await profile.AsyncHTML()
 
     setup_navigation(sidebar, main, user,
         ["home", new StaticPage(Source.From("./pages/home.html"))],
+        ["materials", new MaterialView(api.Materials)],
         ["users", new UserView(api.Users)],
         ["about", new StaticPage(Source.From("./pages/about.html"))],
         ["profile", profile],
@@ -140,10 +142,10 @@ function effect_user(profile: HTMLElement, signal: Signal.RValue<user.Response |
 }
 
 const NamespaceForRoles: Record<Role, string[]> = {
-    [Chief]: ["home", "users", "about", "profile"],
-    [Promoted]: ["home", "about", "profile"],
-    [Admin]: ["home", "about", "profile"],
-    [User]: ["home", "about", "profile"],
+    [Chief]: ["home", "materials", "users", "about", "profile"],
+    [Promoted]: ["home", "materials", "about", "profile"],
+    [Admin]: ["home", "materials", "about", "profile"],
+    [User]: ["home", "materials", "about", "profile"],
     [Unlogged]: ["home", "about", "profile"],
 }
 
@@ -171,8 +173,9 @@ function effect_namespace(options: NodeListOf<HTMLElement>, orq: Orquestrator, s
         }
     }
 
-    if (orq.Current() === undefined || !namespaces.includes(orq.Current()!)) {
-        orq.SwapTo(namespaces[0])
+    const current = orq.Current()
+    if (current === undefined || !namespaces.includes(current)) {
+        options[0].click()
     }
 }
 
