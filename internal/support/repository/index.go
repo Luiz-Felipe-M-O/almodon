@@ -11,7 +11,7 @@ func (i Index[K, V]) Set(key K, value V) {
 	i[key] = value
 }
 
-func (i Index[K, V]) Remove(key K) {
+func (i Index[K, V]) Del(key K) {
 	delete(i, key)
 }
 
