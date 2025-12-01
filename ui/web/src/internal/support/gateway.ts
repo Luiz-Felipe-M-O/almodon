@@ -13,8 +13,12 @@ export async function APIFetch<M extends APIMethods>(url: string, method: M, opt
 		if (options.body !== undefined) { config.body = options.body }
 	}
 
-	const query = new URLSearchParams(config.query).toString()
-	const resp = await fetch(`${url}?${query}`, {
+	if (config.query !== undefined) {
+		const query = new URLSearchParams(config.query).toString()
+		url += "?" + query
+	}
+
+	const resp = await fetch(url, {
 		method: method,
 		headers: Headers[method],
 		body: config.body,

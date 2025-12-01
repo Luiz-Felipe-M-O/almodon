@@ -5,11 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
     <link rel="shortcut icon" href="./assets/icon.png" type="image/x-icon">
-    <link rel="manifest" href="manifest.json?v=0.0.1">
-    <title>Gestão Interna do Almoxarifado da Odontologia</title>
+    <link rel="manifest" href="./app/manifest.json">
 
-    <script type="module" src="./script/main.js?v=0.0.1"></script>
+    <script type="module" src="./script/main.js?v=0.0.2"></script>
     <link rel="stylesheet" href="./style/index.css?v=0.0.1">
+
+    <title>Gestão do Almoxarifado interno da Odontologia</title>
 </head>
 
 <body class="root scrollable">
@@ -19,7 +20,7 @@
 
     <aside id="sidebar">
         <header id="header">
-            <a class="brand" href="./">
+            <a tabindex="0" class="brand" href="./">
                 <img class="logo" src="./assets/logo.png" alt="Logo">
             </a>
         </header>
@@ -35,26 +36,21 @@
                 <div>Usuários</div>
             </button>
 
-            <button tabindex="0" class="button soft option" data-namespace="table">
-                <img class="icon" src="./assets/icons/history.svg">
-                <div>Tabela</div>
-            </button>
-
             <button tabindex="0" class="button soft option" data-namespace="about">
                 <img class="icon" src="./assets/icons/about.svg">
                 <div id="turn-off">Sobre</div>
             </button>
 
-            <button tabindex="0" class="button soft option profile">
+            <button tabindex="0" class="button soft option profile" data-namespace="profile">
                 <img class="icon" src="./assets/icons/account.svg">
-                <div>Json da Silva</div>
+                <div class="name">Json da Silva</div>
             </button>
         </nav>
 
         <menu class="menu">
-            <button tabindex="0" class="button soft option profile">
+            <button tabindex="0" class="button soft option profile" data-namespace="profile">
                 <img class="icon" src="./assets/icons/account.svg">
-                <div>Json da Silva</div>
+                <div class="name">Entrar</div>
             </button>
         </menu>
     </aside>

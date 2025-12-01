@@ -4,6 +4,38 @@
         gap: 1rem;
     }
 
+    .content {
+        & {
+            display: flex;
+            flex-direction: column;
+            justify-self: center;
+            max-width: 90ch;
+            padding: 0 1rem 2rem 1rem;
+            gap: 1rem;
+        }
+
+        section {
+            display: flex;
+            flex-direction: column;
+            gap: .5rem;
+        }
+
+        h1 {
+            font-size: var(--size-larger);
+            font-weight: bold;
+        }
+
+        h2 {
+            font-size: var(--size-large);
+            font-weight: bold;
+        }
+
+        p {
+            text-align: justify;
+            text-indent: 2cm;
+        }
+    }
+
     #footer {
         & {
             display: grid;

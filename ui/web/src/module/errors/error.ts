@@ -74,4 +74,4 @@ export class APIError {
     }
 }
 
-type Cause = APIError | string | Cause[]
+export type Cause = APIError | string | Cause[]

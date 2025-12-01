@@ -1,27 +1,17 @@
-const OriginToRoot: Record<string, { client: string, server: string }> = {
-    "http://localhost:3000": {
-        client: "http://localhost:3000/",
+const OriginToRoot = {
+    ":3000": {
+        client: "/dist/",
         server: "",
     },
-    "http://localhost:4545": {
-        client: "http://localhost:4545/",
-        server: "http://localhost:4545/api/v1/",
+    ":4545": {
+        client: "/",
+        server: "/api/v1/",
     },
-    "https://alan-b-lima.github.io": {
-        client: "https://alan-b-lima.github.io/almodon/ui/web/",
+    ":80": {
+        client: "/almodon/ui/web/dist/",
         server: "",
     },
-}
-
-function urls() {
-    const origin = location.origin
-    if (!Object.hasOwn(OriginToRoot, origin)) {
-        throw new Error("Unknown location " + origin)
-    }
-
-    const root = OriginToRoot[origin]
-    return root
-}
+} as const
 
 namespace Source {
     export function From(path: string, origin: string = client): string {
@@ -35,3 +25,37 @@ namespace Source {
 }
 
 export default Source
+
+function urls() {
+    const origin = location.origin
+    let root
+
+    Find: {
+        if (origin.endsWith(":4545")) {
+            root = OriginToRoot[":4545"]
+            break Find
+        }
+
+        if (origin.endsWith(":3000")) {
+            root = OriginToRoot[":3000"]
+            break Find
+        }
+
+        if (origin.endsWith(":80") || !origin.includes(":")) {
+            root = OriginToRoot[":80"]
+            break Find
+        }
+
+        throw new Error("Unknown location " + origin)
+    }
+
+    let server = ""
+    if (root.server !== "") {
+        server = Source.From(root.server, origin)
+    }
+
+    return {
+        client: Source.From(root.client, origin),
+        server: server,
+    }
+}
