@@ -51,6 +51,16 @@ export default class ProfileView {
         return this.#build
     }
 
+    async AsyncHTML(): Promise<HTMLElement> {
+        if (this.#build === null) {
+            LoadCSSFile(Source.From("./style/profile.css"))
+            this.#build = jsxmm.Element("div", { className: "profile", id: "almodon" })
+        }
+
+        await this.verify()
+        return this.#build
+    }
+
     private async verify(): Promise<void> {
         const [user, error] = await AsyncTry(() => this.#users.Me())
         if (error !== null) {
