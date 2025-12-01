@@ -18,22 +18,13 @@ namespace Signal {
 		}
 	}
 
-	export class RValue<T> {
+	export interface RValue<T> {
 		Read: ReadFunction<T>
-
-		constructor(value: Value<T>) {
-			this.Read = value.Read
-		}
 	}
 
-	export class WValue<T> {
+	export interface WValue<T> {
 		Write: WriteFunction<T>
 		Modify: ModifyFunction<T>
-
-		constructor(value: Value<T>) {
-			this.Write = value.Write
-			this.Modify = value.Modify
-		}
 	}
 
 	export class Compute<T> {
