@@ -36,20 +36,20 @@ func (s *Gate) List(req item.ListParams) (item.Entities, error) {
 	return s.Service.List(req)
 }
 
-func (s *Gate) ListByBatch(uuid uuid.UUID) (item.Entities, error) {
-	if err := service.Authorize(permUser, s.actor); err != nil {
-		return item.Entities{}, err
-	}
-
-	return s.Service.ListByBatch(uuid)
-}
-
 func (s *Gate) ListByMaterial(uuid uuid.UUID) (item.Entities, error) {
 	if err := service.Authorize(permUser, s.actor); err != nil {
 		return item.Entities{}, err
 	}
 
 	return s.Service.ListByMaterial(uuid)
+}
+
+func (s *Gate) ListBySupplier(uuid uuid.UUID) (item.Entities, error) {
+	if err := service.Authorize(permUser, s.actor); err != nil {
+		return item.Entities{}, err
+	}
+
+	return s.Service.ListBySupplier(uuid)
 }
 
 func (s *Gate) Get(uuid uuid.UUID) (item.Entity, error) {
