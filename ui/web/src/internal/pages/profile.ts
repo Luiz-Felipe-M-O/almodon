@@ -2,7 +2,7 @@ import { AsyncTry } from "../../module/errors/try.ts"
 import jsxmm from "../../module/jsxmm/element.ts"
 import { Dialog } from "../support/dialog.ts"
 import { ErrorPage } from "../component/status.ts"
-import { Form, FormField, Info } from "../support/form.ts"
+import { EmailInput, Form, FormField, FormInfo, PasswordInput, SIAPEInput, TextInput } from "../component/form.ts"
 import { FormatDate, LoadCSSFile, Skeleton } from "../support/pages.ts"
 import Source from "../support/source.ts"
 import Signal from "../../module/jsxmm/signals.ts"
@@ -148,7 +148,7 @@ export default class ProfileView {
     }
 
     private async login(form: HTMLFormElement, reporter: HTMLElement): Promise<boolean> {
-        const [siape, password] = Info(form, "siape", "password")
+        const [siape, password] = FormInfo(form, "siape", "password")
         const [, error] = await AsyncTry(() => this.#users.Autheticate(siape, password))
         if (error !== null) {
             if (error instanceof Error) {
@@ -193,7 +193,7 @@ export default class ProfileView {
             return false
         }
 
-        const [name, email] = Info(form, "name", "email")
+        const [name, email] = FormInfo(form, "name", "email")
         const [, error] = await AsyncTry(() => this.#users.Patch(user.uuid, { name, email }))
         if (error !== null) {
             if (error instanceof Error) {
@@ -216,8 +216,8 @@ function login_form(login: (form: HTMLFormElement, reporter: HTMLElement) => Pro
 
     const form = Form(
         reporter,
-        FormField("SIAPE", jsxmm.Element("input", { type: "text", name: "siape", pattern: "\\d{7}", className: "editable monospace" })),
-        FormField("Senha", jsxmm.Element("input", { type: "password", name: "password", className: "editable" })),
+        FormField("SIAPE", "siape", SIAPEInput("siape")),
+        FormField("Senha", "password", PasswordInput("password")),
     )
 
     const buttons = [
@@ -258,13 +258,13 @@ function edit_form(edit: (form: HTMLFormElement, reporter: HTMLElement) => Promi
 
     const form = Form(
         reporter,
-        FormField("Nome", jsxmm.Element("input", { type: "text", name: "name", className: "name editable", required: true })),
-        FormField("e-mail", jsxmm.Element("input", { type: "email", name: "email", className: "email editable", pattern: ".+@.+\\..+", required: true })),
+        FormField("Nome", "name", TextInput("name")),
+        FormField("e-mail", "email", EmailInput("email")),
     )
 
     const buttons = [
         jsxmm.Element("button", { type: "button", className: "button normal", textContent: "Cancelar" },),
-        jsxmm.Element("button", { type: "button", className: "button create", textContent: "Aplicar" }),
+        jsxmm.Element("button", { type: "button", className: "button create", textContent: "Salvar" }),
     ]
 
     const dialog = new Dialog("Login", form, ...buttons)
