@@ -5,14 +5,15 @@ import (
 	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/session"
+	repo "github.com/alan-b-lima/almodon/internal/support/repository"
 	"github.com/alan-b-lima/almodon/internal/xerrors"
 	"github.com/alan-b-lima/almodon/pkg/heap"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
 type Map struct {
-	uuidIndex   map[uuid.UUID]int
-	userIndex   map[uuid.UUID]int
+	uuid        repo.Index[uuid.UUID, int]
+	user        repo.Index[uuid.UUID, int]
 	expiresHeap sleepqueue
 
 	repo []session.Entity
@@ -21,8 +22,8 @@ type Map struct {
 
 func NewMap() session.Repository {
 	repo := Map{
-		uuidIndex: make(map[uuid.UUID]int),
-		userIndex: make(map[uuid.UUID]int),
+		uuid: make(repo.Index[uuid.UUID, int]),
+		user: make(repo.Index[uuid.UUID, int]),
 		expiresHeap: sleepqueue{
 			new:    make(chan ess, 64),
 			cancel: make(chan struct{}, 1),
@@ -38,7 +39,7 @@ func (m *Map) Get(uuid uuid.UUID) (session.Entity, error) {
 	defer m.mu.RUnlock()
 	m.mu.RLock()
 
-	index, in := m.uuidIndex[uuid]
+	index, in := m.uuid.Get(uuid)
 	if !in {
 		return session.Entity{}, xerrors.ErrSessionNotFound
 	}
@@ -55,13 +56,13 @@ func (m *Map) Create(session session.Entity) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 
-	if index, in := m.userIndex[session.User]; in {
+	if index, in := m.user.Get(session.User); in {
 		s := m.repo[index]
 		m.delete(s.UUID)
 	}
 
-	m.uuidIndex[session.UUID] = len(m.repo)
-	m.userIndex[session.User] = len(m.repo)
+	m.uuid.Set(session.UUID, len(m.repo))
+	m.user.Set(session.User, len(m.repo))
 	m.repo = append(m.repo, session)
 
 	m.expiresHeap.new <- ess{session.UUID, session.Expires}
@@ -73,7 +74,7 @@ func (m *Map) Update(uuid uuid.UUID, expires time.Time) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 
-	index, in := m.uuidIndex[uuid]
+	index, in := m.uuid.Get(uuid)
 	if !in {
 		return xerrors.ErrSessionNotFound
 	}
@@ -94,18 +95,26 @@ func (m *Map) Delete(uuid uuid.UUID) error {
 }
 
 func (m *Map) delete(uuid uuid.UUID) error {
-	index, in := m.uuidIndex[uuid]
+	index, in := m.uuid.Get(uuid)
 	if !in {
 		return nil
 	}
 
 	s := &m.repo[index]
 
-	delete(m.uuidIndex, s.UUID)
-	delete(m.userIndex, s.User)
+	m.uuid.Del(s.UUID)
+	m.user.Del(s.User)
 
-	m.repo[index] = m.repo[len(m.repo)-1]
-	m.repo = m.repo[:len(m.repo)-1]
+	last := len(m.repo) - 1
+	if index != last {
+		last := &m.repo[last]
+		m.repo[index] = *last
+		m.uuid.Set(last.UUID, index)
+		m.user.Set(last.User, index)
+	}
+
+	m.repo = m.repo[:last]
+
 	return nil
 }
 

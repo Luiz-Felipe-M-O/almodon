@@ -63,7 +63,7 @@ func (m *Map) init() error {
 	}
 
 	for i, record := range m.repo {
-		m.uuid[record.UUID] = i
+		m.uuid.Set(record.UUID, i)
 
 		m.siads.Add(record.SIADS, i)
 		m.catmat.Add(record.CATMAT, i)
@@ -76,7 +76,7 @@ func (m *Map) init() error {
 func (m *Map) Close() error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
-	
+
 	if m.datapath == "" {
 		return nil
 	}
@@ -202,7 +202,7 @@ func (m *Map) Get(uuid uuid.UUID) (material.Entity, error) {
 	defer m.mu.RUnlock()
 	m.mu.RLock()
 
-	index, in := m.uuid[uuid]
+	index, in := m.uuid.Get(uuid)
 	if !in {
 		return material.Entity{}, xerrors.ErrMaterialNotFound
 	}
@@ -229,7 +229,7 @@ func (m *Map) Patch(uuid uuid.UUID, partial material.PartialEntity) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 
-	index, in := m.uuid[uuid]
+	index, in := m.uuid.Get(uuid)
 	if !in {
 		return xerrors.ErrMaterialNotFound
 	}
@@ -267,14 +267,14 @@ func (m *Map) Delete(uuid uuid.UUID) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 
-	index, in := m.uuid[uuid]
+	index, in := m.uuid.Get(uuid)
 	if !in {
 		return nil
 	}
 
 	mat := &m.repo[index]
 
-	delete(m.uuid, mat.UUID)
+	m.uuid.Del(mat.UUID)
 	m.siads.Del(mat.SIADS, index)
 	m.catmat.Del(mat.CATMAT, index)
 	m.ecampus.Del(mat.ECampus, index)

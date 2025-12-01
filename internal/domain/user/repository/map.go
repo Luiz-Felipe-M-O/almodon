@@ -12,14 +12,14 @@ import (
 
 	"github.com/alan-b-lima/almodon/internal/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
-	"github.com/alan-b-lima/almodon/internal/support/repository"
+	repo "github.com/alan-b-lima/almodon/internal/support/repository"
 	"github.com/alan-b-lima/almodon/internal/xerrors"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
 type Map struct {
-	uuidIndex  map[uuid.UUID]int
-	siapeIndex map[string]int
+	uuid  repo.Index[uuid.UUID, int]
+	siape repo.Index[string, int]
 
 	repo []user.Entity
 	mu   sync.RWMutex
@@ -29,8 +29,8 @@ type Map struct {
 
 func NewMap() user.Repository {
 	repo := Map{
-		uuidIndex:  make(map[uuid.UUID]int),
-		siapeIndex: make(map[string]int),
+		uuid:  make(repo.Index[uuid.UUID, int]),
+		siape: make(repo.Index[string, int]),
 	}
 
 	return &repo
@@ -38,9 +38,9 @@ func NewMap() user.Repository {
 
 func NewPersistantMap(datapath string) (user.Repository, error) {
 	repo := Map{
-		uuidIndex:  make(map[uuid.UUID]int),
-		siapeIndex: make(map[string]int),
-		datapath:   datapath,
+		uuid:     make(repo.Index[uuid.UUID, int]),
+		siape:    make(repo.Index[string, int]),
+		datapath: datapath,
 	}
 
 	if err := repo.init(); err != nil {
@@ -64,8 +64,8 @@ func (m *Map) init() error {
 
 	m.repo = entity_from_json(repo)
 	for i, record := range m.repo {
-		m.uuidIndex[record.UUID] = i
-		m.siapeIndex[record.SIAPE] = i
+		m.uuid[record.UUID] = i
+		m.siape[record.SIAPE] = i
 	}
 
 	return nil
@@ -126,7 +126,7 @@ func (m *Map) Get(uuid uuid.UUID) (user.Entity, error) {
 	defer m.mu.RUnlock()
 	m.mu.RLock()
 
-	index, in := m.uuidIndex[uuid]
+	index, in := m.uuid[uuid]
 	if !in {
 		return user.Entity{}, xerrors.ErrUserNotFound
 	}
@@ -138,7 +138,7 @@ func (m *Map) GetBySIAPE(siape string) (user.Entity, error) {
 	defer m.mu.RUnlock()
 	m.mu.RLock()
 
-	index, in := m.siapeIndex[siape]
+	index, in := m.siape[siape]
 	if !in {
 		return user.Entity{}, xerrors.ErrUserNotFound
 	}
@@ -150,12 +150,12 @@ func (m *Map) Create(user user.Entity) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 
-	if _, in := m.siapeIndex[user.SIAPE]; in {
+	if _, in := m.siape[user.SIAPE]; in {
 		return xerrors.ErrSiapeTaken
 	}
 
-	m.uuidIndex[user.UUID] = len(m.repo)
-	m.siapeIndex[user.SIAPE] = len(m.repo)
+	m.uuid.Set(user.UUID, len(m.repo))
+	m.siape.Set(user.SIAPE, len(m.repo))
 	m.repo = append(m.repo, user)
 
 	return nil
@@ -165,7 +165,7 @@ func (m *Map) Patch(uuid uuid.UUID, user user.PartialEntity) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 
-	index, in := m.uuidIndex[uuid]
+	index, in := m.uuid[uuid]
 	if !in {
 		return xerrors.ErrUserNotFound
 	}
@@ -180,9 +180,9 @@ func (m *Map) Patch(uuid uuid.UUID, user user.PartialEntity) error {
 		}
 	}
 
-	repository.SomeThen(&u.Name, user.Name)
-	repository.SomeThen(&u.Email, user.Email)
-	repository.SomeThen(&u.Password, user.Password)
+	repo.SomeThen(&u.Name, user.Name)
+	repo.SomeThen(&u.Email, user.Email)
+	repo.SomeThen(&u.Password, user.Password)
 
 	u.Updated = user.Updated
 	return nil
@@ -192,7 +192,7 @@ func (m *Map) Delete(uuid uuid.UUID) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 
-	index, in := m.uuidIndex[uuid]
+	index, in := m.uuid.Get(uuid)
 	if !in {
 		return nil
 	}
@@ -202,12 +202,18 @@ func (m *Map) Delete(uuid uuid.UUID) error {
 		return xerrors.ErrNotEnoughChiefs
 	}
 
-	delete(m.uuidIndex, u.UUID)
-	delete(m.siapeIndex, u.SIAPE)
+	m.uuid.Del(u.UUID)
+	m.siape.Del(u.SIAPE)
 
-	m.repo[index] = m.repo[len(m.repo)-1]
-	m.repo = m.repo[:len(m.repo)-1]
+	last := len(m.repo) - 1
+	if index != last {
+		last := &m.repo[last]
+		m.repo[index] = *last
+		m.uuid.Set(last.UUID, index)
+		m.siape.Set(last.SIAPE, index)
+	}
 
+	m.repo = m.repo[:last]
 	return nil
 }
 
