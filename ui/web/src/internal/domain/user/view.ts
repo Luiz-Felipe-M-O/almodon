@@ -79,9 +79,9 @@ export default class UserView {
 
             if (await create_form(this.create.bind(this))) {
                 await this.fetch()
-            } else {
-                buttons.create.disabled = false
             }
+            
+            buttons.create.disabled = false
         }, "Enter", " ")
 
         ListenClickAndKeys(buttons.update, async () => {
