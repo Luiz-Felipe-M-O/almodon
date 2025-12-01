@@ -6,3 +6,8 @@ export function ClickForKeys(element: HTMLElement, ...keys: string[]): void {
         }
     })
 }
+
+export function ListenClickAndKeys(element: HTMLElement, listener: (evt: Event) => void, ...keys: string[]): void {
+    element.addEventListener("click", listener)
+    ClickForKeys(element, ...keys)
+}
