@@ -33,7 +33,11 @@ func main() {
 		log.Error(err)
 		return
 	}
-	defer api.Close()
+	defer func() {
+		if err := api.Close(); err != nil {
+			log.Error(err)
+		}
+	}()
 
 	srv := http.Server{Handler: middleware.LogTraffic(log, style, MakeMux(api))}
 	done := EnableGracefulShutdown(func() {
@@ -54,7 +58,11 @@ func main() {
 func MakeMux(api *api.Handler) *http.ServeMux {
 	mux := new(http.ServeMux)
 
-	mux.Handle("/", http.FileServer(http.Dir("../ui/web/dist/")))
+	fs := http.FileServer(http.Dir("../ui/web/dist/"))
+	f := ServeFile("../ui/web/dist/index.html")
+
+	mux.Handle("/", fs)
+	mux.Handle("/{path}", f)
 	mux.Handle("/src/", http.StripPrefix("/src/", http.FileServer(http.Dir("../ui/web/src/"))))
 	mux.Handle("/api/", api)
 	mux.HandleFunc("/terminate/{timeout}", Terminate)
