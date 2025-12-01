@@ -73,12 +73,13 @@ func (c *Core) Patch(uuid uuid.UUID, req material.Patch) error {
 }
 
 func (c *Core) Delete(uuid uuid.UUID) error {
-	return c.Delete(uuid)
+	return c.Materials.Delete(uuid)
 }
 
 func translate(e *material.Material) material.Entity {
 	return material.Entity{
 		UUID:        e.UUID(),
+		Name:        e.Name(),
 		SIADS:       e.SIADS(),
 		CATMAT:      e.CATMAT(),
 		ECampus:     e.ECampus(),
