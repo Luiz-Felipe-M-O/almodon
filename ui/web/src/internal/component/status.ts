@@ -26,10 +26,9 @@ export function StatusPage(status: number): HTMLElement {
 }
 
 export function ErrorPage(error: APIError): HTMLElement {
-    const element = jsxmm.Element("div", { className: "error duck-tape" },
-        jsxmm.Element("div", { className: "duck", textContent: "I'm a duck-taped solution" }),
-        jsxmm.Element("div", { className: "kind", textContent: error.kind }),
+    const element = jsxmm.Element("div", { className: "error" },
         jsxmm.Element("div", { className: "title", textContent: error.title }),
+        jsxmm.Element("div", { className: "kind", textContent: error.kind }),
         jsxmm.Element("div", { className: "message", textContent: error.message }),
     )
 
@@ -39,7 +38,11 @@ export function ErrorPage(error: APIError): HTMLElement {
         element.append(cause)
     }
 
-    return element
+    element.append(
+        jsxmm.Element("div", { className: "duck", textContent: "I'm a duck-taped solution" }),
+    )
+
+    return jsxmm.Element("div", { id: "almodon", className: "duck-tape" }, element)
 }
 
 function error_cause(cause: Cause): HTMLElement {
