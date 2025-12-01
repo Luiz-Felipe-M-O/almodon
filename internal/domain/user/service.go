@@ -20,5 +20,7 @@ type Service interface {
 	Delete(uuid uuid.UUID) error
 
 	Authenticate(siape string, password string) (AuthEntity, error)
+	Logout(session uuid.UUID) error
+
 	Actor(session uuid.UUID) (auth.Actor, error)
 }

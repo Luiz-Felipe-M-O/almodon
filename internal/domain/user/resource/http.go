@@ -2,6 +2,7 @@ package users
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/alan-b-lima/almodon/internal/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
@@ -31,6 +32,7 @@ func New(users user.Service) http.Handler {
 		"PATCH /users/{uuid}":      rc.Patch,
 		"DELETE /users/{uuid}":     rc.Delete,
 		"POST /users/auth/{$}":     rc.Authenticate,
+		"DELETE /users/auth/{$}":   rc.Logout,
 		"GET /users/me/{$}":        rc.Me,
 		"/":                        resource.NotFound,
 	}
@@ -147,6 +149,22 @@ func (rc *Resource) Authenticate(w http.ResponseWriter, r *http.Request) {
 		resource.WriteError(w, err)
 		return
 	}
+}
+
+func (rc *Resource) Logout(w http.ResponseWriter, r *http.Request) {
+	session, err := resource.SessionCookie(r)
+	if err != nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if err := rc.Users.Service.Logout(session); err != nil {
+		resource.WriteError(w, err)
+		return
+	}
+
+	resource.SetSession(w, session, time.Time{})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (rc *Resource) Me(w http.ResponseWriter, r *http.Request) {

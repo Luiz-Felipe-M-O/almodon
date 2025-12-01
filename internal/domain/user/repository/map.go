@@ -2,6 +2,7 @@ package userrepo
 
 import (
 	"cmp"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -171,17 +172,19 @@ func (m *Map) Patch(uuid uuid.UUID, user user.PartialEntity) error {
 
 	u := &m.repo[index]
 
-	role, ok := user.Role.Unwrap()
-	if ok && role != u.Role && u.Role == auth.Chief && !enough_chiefs(m) {
-		return xerrors.ErrNotEnoughChiefs
-	} else {
-		u.Role = role
+	if role, ok := user.Role.Unwrap(); ok {
+		if role != u.Role && u.Role == auth.Chief && !enough_chiefs(m) {
+			return xerrors.ErrNotEnoughChiefs
+		} else {
+			u.Role = role
+		}
 	}
 
 	repository.SomeThen(&u.Name, user.Name)
 	repository.SomeThen(&u.Email, user.Email)
 	repository.SomeThen(&u.Password, user.Password)
 
+	u.Updated = user.Updated
 	return nil
 }
 
@@ -216,11 +219,7 @@ func enough_chiefs(m *Map) bool {
 		}
 	}
 
-	if count < 2 {
-		return false
-	}
-
-	return true
+	return count >= 2
 }
 
 func clamp[T cmp.Ordered](mn, val, mx T) T {
@@ -249,10 +248,15 @@ func entity_from_json(entities []entity) []user.Entity {
 type pwd [60]byte
 
 func (v pwd) MarshalJSON() ([]byte, error) {
-	return fmt.Appendf(nil, "%+q", v[:]), nil
+	buf := base64.StdEncoding.AppendEncode(nil, v[:])
+	return fmt.Appendf(nil, "%+q", buf), nil
 }
 
 func (v *pwd) UnmarshalJSON(buf []byte) error {
-	*v = pwd(buf[1 : len(buf)-1])
-	return nil
+	if len(buf) < 2 || buf[0] != '"' || buf[len(buf)-1] != '"' {
+		return fmt.Errorf("invalid password encoding")
+	}
+
+	_, err := base64.StdEncoding.Decode(v[:], buf[1:len(buf)-1])
+	return err
 }

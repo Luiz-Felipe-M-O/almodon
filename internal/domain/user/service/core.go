@@ -94,6 +94,10 @@ func (c *Core) Authenticate(siape, password string) (user.AuthEntity, error) {
 	return ares, nil
 }
 
+func (c *Core) Logout(session uuid.UUID) error {
+	return c.Sessions.Delete(session)
+}
+
 func (c *Core) Actor(session uuid.UUID) (auth.Actor, error) {
 	res, err := c.Sessions.Get(session)
 	if err != nil {

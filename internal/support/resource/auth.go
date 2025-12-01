@@ -10,10 +10,10 @@ import (
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
-const SessionCookie = "session"
+const SessionCookieName = "session"
 
 func Session(rc auth.Identifier, r *http.Request) (auth.Actor, error) {
-	session, err := session(r)
+	session, err := SessionCookie(r)
 	if err != nil {
 		return auth.NewUnlogged(), nil
 	}
@@ -29,8 +29,8 @@ func Session(rc auth.Identifier, r *http.Request) (auth.Actor, error) {
 	return act, err
 }
 
-func session(r *http.Request) (uuid.UUID, error) {
-	s, err := r.Cookie(SessionCookie)
+func SessionCookie(r *http.Request) (uuid.UUID, error) {
+	s, err := r.Cookie(SessionCookieName)
 	if err != nil {
 		return uuid.UUID{}, xerrors.ErrUnauthenticatedUser.New(nil)
 	}
@@ -45,7 +45,7 @@ func session(r *http.Request) (uuid.UUID, error) {
 
 func SetSession(w http.ResponseWriter, uuid uuid.UUID, expires time.Time) {
 	cookie := &http.Cookie{
-		Name:     SessionCookie,
+		Name:     SessionCookieName,
 		Value:    uuid.String(),
 		Expires:  expires,
 		Path:     "/",
