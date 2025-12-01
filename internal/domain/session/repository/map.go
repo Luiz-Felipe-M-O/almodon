@@ -45,7 +45,6 @@ func (m *Map) Get(uuid uuid.UUID) (session.Entity, error) {
 
 	s := m.repo[index]
 	if time.Now().After(s.Expires) {
-		m.delete(s.UUID)
 		return session.Entity{}, xerrors.ErrSessionNotFound
 	}
 
