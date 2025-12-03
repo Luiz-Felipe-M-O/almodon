@@ -1,4 +1,4 @@
-# Almodon - Sistemas de Gestão do Almoxarifado interno da Odontologia
+# Almodon - Sistema de Gestão do Almoxarifado interno da Odontologia
 
 Almodon é um sistemas de gestão que tem como objetivo auxiliar as atividades desenvolvidas pelo Almoxarifado interno da Odontologia na UFVJM.
 
@@ -10,6 +10,10 @@ Almodon é um sistemas de gestão que tem como objetivo auxiliar as atividades d
 - Luiz Felipe Melo Oliveira    <[Luiz-Felipe-M-O](https://github.com/Luiz-Felipe-M-O)>
 - Otávio Gomes Calazans        <[otaviogomes03](https://github.com/otaviogomes03)>
 - Rafael Gomes Silva           <[rafleGomes](https://github.com/rafleGomes)>
+
+## Documentação
+
+A documentação do Almodon está disponível no [Manual do Desenvolvedor](./docs/DEVELOPER.html). Lá é encontrado informações detalhadas sobre a arquitetura do sistema, instruções de instalação, guias de contribuição e muito mais.
 
 ## Licença
 
