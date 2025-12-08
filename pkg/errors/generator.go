@@ -9,87 +9,80 @@ package errors
 
 import "fmt"
 
-type gen struct {
-	kind  Kind
-	title string
+type imp struct {
+	kind     Kind
+	title    string
+	message  string
+	cause    error
+	metadata map[string]any
 }
 
-// Gen creates a new error generator. The returned generator
-// can be used to create multiple errors with the same
-// kind and title, but different messages and causes.
-func Gen(kind Kind, title string) *gen {
-	return &gen{
+// Imp is an error implementation that can be incrementally constructed, up
+// until final construction, through [imp.Make], all [imp]s are passed around
+// as values, therefore, an assignment will only affect those after it.
+func Imp(kind Kind, title string) imp {
+	return imp{
 		kind:  kind,
 		title: title,
 	}
 }
 
-// New creates a new error with the given message and cause.
-func (gen *gen) New(message string, cause error) error {
-	return &Error{
-		Kind:    gen.kind,
-		Title:   gen.title,
-		Message: message,
-		Cause:   cause,
+// Message replaces the error message of the implementation.
+func (b imp) Message(message string) imp {
+	b.message = message
+	return b
+}
+
+// Message replaces the error message of the implementation.
+func (b imp) Format(format string) fmt_ {
+	return fmt_{
+		kind:     b.kind,
+		title:    b.title,
+		format:   format,
+		cause:    b.cause,
+		metadata: b.metadata,
 	}
 }
 
-type imp struct {
-	kind    Kind
-	title   string
-	message string
+// Cause replaces the error cause of the implementation.
+func (b imp) Cause(cause error) imp {
+	b.cause = cause
+	return b
 }
 
-// Imp creates a new error implementer. The returned implementer
-// can be used to create multiple errors with the same
-// kind, title, and message, but different causes.
-func Imp(kind Kind, title, message string) *imp {
-	return &imp{
-		kind:    kind,
-		title:   title,
-		message: message,
-	}
+// Metadata replaces the error metadata of the implementation.
+func (b imp) Metadata(metadata map[string]any) imp {
+	b.metadata = metadata
+	return b
 }
 
-// New creates a new error with the given cause.
-func (gen *imp) New(cause error) error {
-	return &Error{
-		Kind:    gen.kind,
-		Title:   gen.title,
-		Message: gen.message,
-		Cause:   cause,
-	}
+// Make constructs a new error out of the current values in the fields of the
+// implementation. Every call to Make creates a different error.
+func (b imp) Make() error {
+	return New(b.kind, b.title, b.message, b.cause, b.metadata)
 }
 
 type fmt_ struct {
-	kind   Kind
-	title  string
-	format string
+	kind     Kind
+	title    string
+	format   string
+	cause    error
+	metadata map[string]any
 }
 
-// Fmt creates a new error formatter. The returned formatter
-// can be used to create multiple errors with the same
-// kind and title, but different formatted messages.
-//
-// The format follows the same rules as [fmt.Errorf].
-//
-// The cause is always nil.
-func Fmt(kind Kind, title, format string) *fmt_ {
-	return &fmt_{
-		kind:   kind,
-		title:  title,
-		format: format,
-	}
+// Cause replaces the error cause of the implementation.
+func (gen fmt_) Cause(cause error) fmt_ {
+	gen.cause = cause
+	return gen
 }
 
-// New creates a new error with the given formatted message.
-func (gen *fmt_) New(v ...any) error {
-	err := fmt.Errorf(gen.format, v...)
+// Metadata replaces the error metadata of the implementation.
+func (gen fmt_) Metadata(metadata map[string]any) fmt_ {
+	gen.metadata = metadata
+	return gen
+}
 
-	return &Error{
-		Kind:    gen.kind,
-		Title:   gen.title,
-		Message: err.Error(),
-		Cause:   nil,
-	}
+func (gen fmt_) Make(a ...any) error {
+	message := fmt.Errorf(gen.format, a...).Error()
+	return New(gen.kind, gen.title, message, gen.cause, gen.metadata)
 }

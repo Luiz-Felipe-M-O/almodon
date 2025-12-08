@@ -19,20 +19,22 @@ import (
 
 // Error is an structured error type.
 type Error struct {
-	Kind    Kind
-	Title   string
-	Message string
-	Cause   error
+	Kind     Kind
+	Title    string
+	Message  string
+	Cause    error
+	Metadata map[string]any
 }
 
-// New create a new error. Each new call generated a
-// different error, regardless of the parameters.
-func New(kind Kind, title, message string, cause error) error {
+// New create a new error. Each new call generated a different error,
+// regardless of the parameters.
+func New(kind Kind, title, message string, cause error, metadata map[string]any) error {
 	return &Error{
-		Kind:    kind,
-		Title:   title,
-		Message: message,
-		Cause:   cause,
+		Kind:     kind,
+		Title:    title,
+		Message:  message,
+		Cause:    cause,
+		Metadata: metadata,
 	}
 }
 
@@ -86,20 +88,17 @@ func (err *Error) UnmarshalJSON(buf []byte) error {
 	}
 
 	*err = Error{
-		Kind:    efj.Kind,
-		Title:   efj.Title,
-		Message: efj.Message,
-		Cause:   &efj.Cause,
+		Kind:     efj.Kind,
+		Title:    efj.Title,
+		Message:  efj.Message,
+		Cause:    &efj.Cause,
+		Metadata: efj.Metadata,
 	}
 	return nil
 }
 
 // Kind in a enumeration of kinds of errors.
 type Kind int
-
-// client_errors_start is a sentinel value used to mark the start of the
-// client-facing error kinds. It has no semantic meaning itself and should not
-// be used as an actual error kind in returned errors; it exists only for grouping.
 
 const (
 	client_errors_start Kind = iota // This exists only for grouping.
@@ -237,17 +236,19 @@ func (k *Kind) UnmarshalJSON(buf []byte) error {
 }
 
 type errorFromJSON struct {
-	Kind    Kind    `json:"kind"`
-	Title   string  `json:"title"`
-	Message string  `json:"message"`
-	Cause   wrapped `json:"cause"`
+	Kind     Kind           `json:"kind"`
+	Title    string         `json:"title"`
+	Message  string         `json:"message"`
+	Cause    wrapped        `json:"cause"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 type errorForJSON struct {
-	Kind    Kind   `json:"kind"`
-	Title   string `json:"title"`
-	Message string `json:"message"`
-	Cause   error  `json:"cause,omitempty"`
+	Kind     Kind           `json:"kind"`
+	Title    string         `json:"title"`
+	Message  string         `json:"message"`
+	Cause    error          `json:"cause,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 }
 
 func invert[K, V comparable](m map[K]V) map[V]K {
