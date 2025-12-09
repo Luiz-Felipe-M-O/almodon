@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
-	"github.com/alan-b-lima/almodon/internal/xerrors"
+
 	"github.com/alan-b-lima/almodon/pkg/heap"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
@@ -72,12 +72,12 @@ func (m *Map) Get(uuid uuid.UUID) (promotion.Entity, error) {
 
 	index, in := m.uuidIndex[uuid]
 	if !in {
-		return promotion.Entity{}, xerrors.ErrPromotionNotFound
+		return promotion.Entity{}, promotion.ErrPromotionNotFound
 	}
 
 	s := m.repo[index]
 	if time.Now().After(s.Expires) {
-		return promotion.Entity{}, xerrors.ErrPromotionNotFound
+		return promotion.Entity{}, promotion.ErrPromotionNotFound
 	}
 
 	return s, nil
@@ -89,13 +89,13 @@ func (m *Map) GetByUser(user uuid.UUID) (promotion.Entity, error) {
 
 	index, in := m.userIndex[user]
 	if !in {
-		return promotion.Entity{}, xerrors.ErrPromotionNotFound
+		return promotion.Entity{}, promotion.ErrPromotionNotFound
 	}
 
 	s := m.repo[index]
 	if time.Now().After(s.Expires) {
 		m.delete(s.UUID)
-		return promotion.Entity{}, xerrors.ErrPromotionNotFound
+		return promotion.Entity{}, promotion.ErrPromotionNotFound
 	}
 
 	return s, nil
@@ -128,7 +128,7 @@ func (m *Map) Update(uuid uuid.UUID, expires time.Time) error {
 
 	index, in := m.uuidIndex[uuid]
 	if !in {
-		return xerrors.ErrPromotionNotFound
+		return promotion.ErrPromotionNotFound
 	}
 
 	s := &m.repo[index]

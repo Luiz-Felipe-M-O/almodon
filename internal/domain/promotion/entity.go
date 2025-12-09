@@ -3,12 +3,11 @@ package promotion
 import (
 	"time"
 
-	"github.com/alan-b-lima/almodon/internal/xerrors"
 	"github.com/alan-b-lima/almodon/pkg/errors"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
-const _MaxMaxAge = 3 * 24 * time.Hour
+const MaxAgeMax = 3 * 24 * time.Hour
 
 type Promotion struct {
 	uuid    uuid.UUID
@@ -51,8 +50,8 @@ func (s *Promotion) SetMaxAge(maxAge time.Duration) error {
 }
 
 func ProcessMaxAge(maxAge time.Duration) (time.Time, error) {
-	if maxAge > _MaxMaxAge {
-		return time.Time{}, xerrors.ErrPromotionTooLong.New(_MaxMaxAge)
+	if maxAge > MaxAgeMax {
+		return time.Time{}, ErrPromotionTooLong
 	}
 
 	return time.Now().Add(maxAge), nil

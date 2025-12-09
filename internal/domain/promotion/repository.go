@@ -7,39 +7,17 @@ import (
 )
 
 type Repository interface {
-	Lister
-	Getter
-	GetterByUser
-	Creater
-	Updater
-	Deleter
+	List(offset, limit int) (Entities, error)
+	
+	Get(uuid.UUID) (Entity, error)
+	GetByUser(uuid.UUID) (Entity, error)
+	
+	Create(Entity) error
+	
+	Update(uuid.UUID, time.Time) error
+	
+	Delete(uuid.UUID) error
 }
-
-type (
-	Lister interface {
-		List(offset, limit int) (Entities, error)
-	}
-
-	Getter interface {
-		Get(uuid.UUID) (Entity, error)
-	}
-
-	GetterByUser interface {
-		GetByUser(uuid.UUID) (Entity, error)
-	}
-
-	Creater interface {
-		Create(Entity) error
-	}
-
-	Updater interface {
-		Update(uuid.UUID, time.Time) error
-	}
-
-	Deleter interface {
-		Delete(uuid.UUID) error
-	}
-)
 
 type (
 	Entities struct {

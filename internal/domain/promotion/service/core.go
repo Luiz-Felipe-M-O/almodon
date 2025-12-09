@@ -5,7 +5,7 @@ import (
 
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
-	"github.com/alan-b-lima/almodon/internal/xerrors"
+
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
@@ -13,6 +13,8 @@ type Core struct {
 	Promotions promotion.Repository
 	Users      user.Service
 }
+
+var _ promotion.Service = &Core{}
 
 const _MaxAge = 1 * 24 * time.Hour
 
@@ -27,7 +29,7 @@ func (c *Core) Get(uuid uuid.UUID) (promotion.Entity, error) {
 	}
 
 	if time.Now().After(res.Expires) {
-		return promotion.Entity{}, xerrors.ErrPromotionNotFound
+		return promotion.Entity{}, promotion.ErrPromotionNotFound
 	}
 
 	return res, err
@@ -40,7 +42,7 @@ func (c *Core) GetByUser(user uuid.UUID) (promotion.Entity, error) {
 	}
 
 	if time.Now().After(res.Expires) {
-		return promotion.Entity{}, xerrors.ErrPromotionNotFound
+		return promotion.Entity{}, promotion.ErrPromotionNotFound
 	}
 
 	return res, err

@@ -1,7 +1,7 @@
 package promotionserve
 
 import (
-	"github.com/alan-b-lima/almodon/internal/auth"
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
 	"github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
@@ -18,7 +18,7 @@ func New(promotions promotion.Service) promotion.Service {
 	}
 }
 
-var permChief = auth.Permit(auth.Chief)
+var permChief = auth.Allow(auth.Chief)
 
 func (s *Gate) Allow(act auth.Actor) promotion.Service {
 	return &Gate{

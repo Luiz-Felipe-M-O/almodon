@@ -3,10 +3,10 @@ package promotions
 import (
 	"net/http"
 
-	"github.com/alan-b-lima/almodon/internal/auth"
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
 	"github.com/alan-b-lima/almodon/internal/support/resource"
-	"github.com/alan-b-lima/almodon/internal/xerrors"
+
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
@@ -43,7 +43,7 @@ func (rc *Resource) List(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(rc.Ident, func(act auth.Actor) (promotion.ListResult, error) {
 		req := promotion.ListParams{Offset: 0, Limit: 10}
 		if err := resource.QueryParams(r.URL.Query(), &req); err != nil {
-			return promotion.ListResult{}, xerrors.ErrBadQueryParams.New(err)
+			return promotion.ListResult{}, resource.ErrBadQueryParams.Cause(err).Make()
 		}
 
 		ent, err := rc.Promotions.Permit(act).List(req)
@@ -69,7 +69,7 @@ func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(rc.Ident, func(act auth.Actor) (promotion.Result, error) {
 		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
-			return promotion.Result{}, xerrors.ErrBadUUID
+			return promotion.Result{}, resource.ErrBadUUID
 		}
 
 		ent, err := rc.Promotions.Permit(act).Get(uuid)
@@ -96,7 +96,7 @@ func (rc *Resource) Update(w http.ResponseWriter, r *http.Request) {
 	resource.PutHandler(rc.Ident, func(act auth.Actor, req promotion.Update) error {
 		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
-			return xerrors.ErrBadUUID
+			return resource.ErrBadUUID
 		}
 
 		return rc.Promotions.Permit(act).Update(uuid, req)
@@ -107,7 +107,7 @@ func (rc *Resource) Delete(w http.ResponseWriter, r *http.Request) {
 	resource.DeleteHandler(rc.Ident, func(act auth.Actor) error {
 		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
-			return xerrors.ErrBadUUID
+			return resource.ErrBadUUID
 		}
 
 		return rc.Promotions.Permit(act).Delete(uuid)
