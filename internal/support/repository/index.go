@@ -15,18 +15,18 @@ func (i Index[K, V]) Del(key K) {
 	delete(i, key)
 }
 
-type SliceIndex[K, V comparable] map[K][]V
+type MultiIndex[K, V comparable] map[K][]V
 
-func (s SliceIndex[K, V]) Get(key K) ([]V, bool) {
+func (s MultiIndex[K, V]) Get(key K) ([]V, bool) {
 	values, ok := s[key]
 	return values, ok
 }
 
-func (s SliceIndex[K, V]) Add(key K, value V) {
+func (s MultiIndex[K, V]) Add(key K, value V) {
 	s[key] = append(s[key], value)
 }
 
-func (s SliceIndex[K, V]) Swap(key K, old, new V) {
+func (s MultiIndex[K, V]) Swap(key K, old, new V) {
 	values, ok := s[key]
 	if !ok {
 		return
@@ -40,7 +40,7 @@ func (s SliceIndex[K, V]) Swap(key K, old, new V) {
 	}
 }
 
-func (s SliceIndex[K, V]) Del(key K, value V) {
+func (s MultiIndex[K, V]) Del(key K, value V) {
 	values, ok := s[key]
 	if !ok {
 		return
