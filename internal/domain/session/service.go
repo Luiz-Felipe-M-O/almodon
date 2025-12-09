@@ -5,11 +5,26 @@ import (
 )
 
 type Service interface {
-	Get(uuid.UUID) (Entity, error)
-
-	CreateAndGet(Create) (Entity, error)
-
-	Update(uuid.UUID, Update) error
-
-	Delete(uuid.UUID) error
+	Getter
+	Creater
+	Updater
+	Deleter
 }
+
+type (
+	Getter interface {
+		Get(uuid.UUID) (Entity, error)
+	}
+
+	Creater interface {
+		CreateAndGet(Create) (Entity, error)
+	}
+
+	Updater interface {
+		Update(uuid.UUID, Update) error
+	}
+
+	Deleter interface {
+		Delete(uuid.UUID) error
+	}
+)

@@ -7,29 +7,14 @@ import (
 )
 
 type Repository interface {
-	Getter
-	Creater
-	Updater
-	Deleter
+	Get(uuid.UUID) (Entity, error)
+
+	Create(Entity) error
+	
+	Update(uuid.UUID, time.Time) error
+
+	Delete(uuid.UUID) error
 }
-
-type (
-	Getter interface {
-		Get(uuid.UUID) (Entity, error)
-	}
-
-	Creater interface {
-		Create(Entity) error
-	}
-
-	Updater interface {
-		Update(uuid.UUID, time.Time) error
-	}
-
-	Deleter interface {
-		Delete(uuid.UUID) error
-	}
-)
 
 type (
 	Entity struct {

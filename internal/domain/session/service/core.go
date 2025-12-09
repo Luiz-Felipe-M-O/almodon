@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/session"
-	"github.com/alan-b-lima/almodon/internal/xerrors"
+
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
@@ -12,7 +12,7 @@ type Core struct {
 	Sessions session.Repository
 }
 
-const _MaxAge = 10 * time.Minute
+const _MaxAge = 1 * time.Hour
 
 func (c *Core) Get(uuid uuid.UUID) (session.Entity, error) {
 	res, err := c.Sessions.Get(uuid)
@@ -21,7 +21,7 @@ func (c *Core) Get(uuid uuid.UUID) (session.Entity, error) {
 	}
 
 	if time.Now().After(res.Expires) {
-		return session.Entity{}, xerrors.ErrSessionNotFound
+		return session.Entity{}, session.ErrSessionNotFound
 	}
 
 	return res, nil

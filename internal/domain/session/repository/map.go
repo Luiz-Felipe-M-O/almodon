@@ -6,7 +6,7 @@ import (
 
 	"github.com/alan-b-lima/almodon/internal/domain/session"
 	repo "github.com/alan-b-lima/almodon/internal/support/repository"
-	"github.com/alan-b-lima/almodon/internal/xerrors"
+
 	"github.com/alan-b-lima/almodon/pkg/heap"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
@@ -41,15 +41,15 @@ func (m *Map) Get(uuid uuid.UUID) (session.Entity, error) {
 
 	index, in := m.uuid.Get(uuid)
 	if !in {
-		return session.Entity{}, xerrors.ErrSessionNotFound
+		return session.Entity{}, session.ErrSessionNotFound
 	}
 
 	s := m.repo[index]
 	if time.Now().After(s.Expires) {
-		return session.Entity{}, xerrors.ErrSessionNotFound
+		return session.Entity{}, session.ErrSessionNotFound
 	}
 
-	return m.repo[index], nil
+	return s, nil
 }
 
 func (m *Map) Create(session session.Entity) error {
@@ -76,7 +76,7 @@ func (m *Map) Update(uuid uuid.UUID, expires time.Time) error {
 
 	index, in := m.uuid.Get(uuid)
 	if !in {
-		return xerrors.ErrSessionNotFound
+		return session.ErrSessionNotFound
 	}
 
 	s := &m.repo[index]

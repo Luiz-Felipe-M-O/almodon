@@ -3,12 +3,11 @@ package session
 import (
 	"time"
 
-	"github.com/alan-b-lima/almodon/internal/xerrors"
 	"github.com/alan-b-lima/almodon/pkg/errors"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
-const _MaxMaxAge = 7 * 24 * time.Hour
+const MaxAgeMax = 7 * 24 * time.Hour
 
 type Session struct {
 	uuid    uuid.UUID
@@ -41,8 +40,8 @@ func (s *Session) setUser(uuid uuid.UUID) error {
 }
 
 func (s *Session) SetMaxAge(maxAge time.Duration) error {
-	if maxAge > _MaxMaxAge {
-		return xerrors.ErrSessionTooLong.New(_MaxMaxAge)
+	if maxAge > MaxAgeMax {
+		return ErrSessionTooLong
 	}
 
 	s.expires = time.Now().Add(maxAge)
