@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/alan-b-lima/almodon/internal/xerrors"
 	"github.com/alan-b-lima/almodon/pkg/errors"
 )
 
@@ -68,43 +67,34 @@ var (
 func DecodeJSON(req any, r *http.Request) error {
 	contentType := r.Header.Get("Content-Type")
 	if contentType == "" {
-		return xerrors.ErrNoContentType
+		return ErrNoContentType
 	}
 
 	if !reContentTypeApplicationJson.MatchString(contentType) {
-		return xerrors.ErrNoContentType
+		return ErrUnsupportedContentType.Make(contentType)
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		switch err := err.(type) {
-		case *json.SyntaxError:
-			return xerrors.ErrJsonSyntax.New(err.Offset)
-
-		case *json.UnmarshalTypeError:
-			return xerrors.ErrJsonType.New(err.Offset, err.Type.Kind(), err.Value)
-
-		}
-
 		if err == io.EOF {
-			return xerrors.ErrJsonSyntax.New(0)
+			return ErrJSON.Message("unexpected end of input").Make()
 		}
 
-		return xerrors.ErrJson.New(err.Error(), nil)
+		return ErrJSON.Cause(err).Make()
 	}
 
 	return nil
 }
 
-var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
+var buffers = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
 func EncodeJSON(res any, status int, w http.ResponseWriter, r *http.Request) error {
 	accept := r.Header.Get("Accept")
 	if !reAcceptApplicationJson.MatchString(accept) {
-		return xerrors.ErrNotAcceptableJson
+		return ErrNotAcceptable.Make("application/json")
 	}
 
-	b := bufPool.Get().(*bytes.Buffer)
-	defer bufPool.Put(b)
+	b := buffers.Get().(*bytes.Buffer)
+	defer buffers.Put(b)
 	b.Reset()
 
 	if err := json.NewEncoder(b).Encode(res); err != nil {
@@ -122,5 +112,5 @@ func EncodeJSON(res any, status int, w http.ResponseWriter, r *http.Request) err
 }
 
 func NotFound(w http.ResponseWriter, r *http.Request) {
-	WriteError(w, xerrors.ErrResourceNotFound.New(r.URL.Path))
+	WriteError(w, ErrResourceNotFound.Make(r.URL.Path))
 }

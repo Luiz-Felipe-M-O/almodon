@@ -3,7 +3,7 @@ package resource
 import (
 	"net/http"
 
-	"github.com/alan-b-lima/almodon/internal/auth"
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 )
 
 func GetHandler[TRes any](gk auth.Identifier, proc func(auth.Actor) (TRes, error), w http.ResponseWriter, r *http.Request) {
