@@ -3,7 +3,7 @@ package user
 import (
 	"time"
 
-	"github.com/alan-b-lima/almodon/internal/auth"
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/pkg/opt"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
@@ -34,11 +34,6 @@ type (
 	UpdateRole struct {
 		Role auth.Role `json:"role"`
 	}
-
-	Authenticate struct {
-		SIAPE    string `json:"siape"`
-		Password string `json:"password"`
-	}
 )
 
 type (
@@ -61,11 +56,5 @@ type (
 
 	CreateResult struct {
 		UUID uuid.UUID `json:"uuid"`
-	}
-
-	AuthResult struct {
-		UUID    uuid.UUID `json:"uuid"`
-		User    uuid.UUID `json:"user"`
-		Expires time.Time `json:"expires"`
 	}
 )

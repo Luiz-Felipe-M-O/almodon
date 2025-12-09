@@ -3,45 +3,23 @@ package user
 import (
 	"time"
 
-	"github.com/alan-b-lima/almodon/internal/auth"
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/pkg/opt"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
 type Repository interface {
-	Lister
-	Getter
-	GetterBySIAPE
-	Creater
-	Patcher
-	Deleter
+	List(offset, limit int) (Entities, error)
+
+	Get(uuid.UUID) (Entity, error)
+	GetBySIAPE(string) (Entity, error)
+	
+	Create(Entity) error
+	
+	Patch(uuid.UUID, PartialEntity) error
+	
+	Delete(uuid.UUID) error
 }
-
-type (
-	Lister interface {
-		List(offset, limit int) (Entities, error)
-	}
-
-	Getter interface {
-		Get(uuid.UUID) (Entity, error)
-	}
-
-	GetterBySIAPE interface {
-		GetBySIAPE(string) (Entity, error)
-	}
-
-	Creater interface {
-		Create(Entity) error
-	}
-
-	Patcher interface {
-		Patch(uuid.UUID, PartialEntity) error
-	}
-
-	Deleter interface {
-		Delete(uuid.UUID) error
-	}
-)
 
 type (
 	Entities struct {

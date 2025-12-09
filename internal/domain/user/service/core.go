@@ -3,22 +3,17 @@ package userserve
 import (
 	"time"
 
-	"github.com/alan-b-lima/almodon/internal/auth"
-	"github.com/alan-b-lima/almodon/internal/domain/promotion"
-	"github.com/alan-b-lima/almodon/internal/domain/session"
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
+	"github.com/alan-b-lima/almodon/internal/support"
 	"github.com/alan-b-lima/almodon/internal/support/entity"
-	"github.com/alan-b-lima/almodon/internal/xerrors"
 	"github.com/alan-b-lima/almodon/pkg/errors"
-	"github.com/alan-b-lima/almodon/pkg/hash"
 	"github.com/alan-b-lima/almodon/pkg/opt"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
 type Core struct {
-	Users      user.Repository
-	Sessions   session.Service
-	Promotions promotion.Service
+	Users user.Repository
 }
 
 var _ user.Service = &Core{}
@@ -58,7 +53,7 @@ func (c *Core) Patch(uuid uuid.UUID, req user.Patch) error {
 }
 
 func (c *Core) UpdatePassword(uuid uuid.UUID, req user.UpdatePassword) error {
-	return xerrors.ErrTODO
+	return support.ErrTODO
 }
 
 func (c *Core) UpdateRole(uuid uuid.UUID, req user.UpdateRole) error {
@@ -71,59 +66,7 @@ func (c *Core) Delete(uuid uuid.UUID) error {
 	return c.Users.Delete(uuid)
 }
 
-func (c *Core) Authenticate(siape, password string) (user.AuthEntity, error) {
-	res, err := c.Users.GetBySIAPE(siape)
-	if err != nil {
-		return user.AuthEntity{}, err
-	}
-
-	if !hash.Compare(res.Password[:], []byte(password)) {
-		return user.AuthEntity{}, xerrors.ErrIncorrectPassword
-	}
-
-	sres, err := c.Sessions.CreateAndGet(session.Create{User: res.UUID})
-	if err != nil {
-		return user.AuthEntity{}, err
-	}
-
-	ares := user.AuthEntity{
-		UUID:    sres.UUID,
-		User:    res.UUID,
-		Expires: sres.Expires,
-	}
-	return ares, nil
-}
-
-func (c *Core) Logout(session uuid.UUID) error {
-	return c.Sessions.Delete(session)
-}
-
-func (c *Core) Actor(session uuid.UUID) (auth.Actor, error) {
-	res, err := c.Sessions.Get(session)
-	if err != nil {
-		return auth.NewUnlogged(), xerrors.ErrUnauthenticatedUser.New(err)
-	}
-
-	ures, err := c.Users.Get(res.User)
-	if err != nil {
-		return auth.NewUnlogged(), xerrors.ErrUnauthenticatedUser.New(err)
-	}
-
-	role := ures.Role
-	if ures.Role == auth.Admin {
-		_, err := c.Promotions.GetByUser(ures.UUID)
-		if err == nil {
-			role = auth.Promoted
-		}
-	}
-
-	return auth.NewLogged(
-		ures.UUID,
-		role,
-	), nil
-}
-
-func patch(users user.Patcher, uuid uuid.UUID, name, email, password opt.Opt[string], role opt.Opt[auth.Role]) error {
+func patch(users user.Repository, uuid uuid.UUID, name, email, password opt.Opt[string], role opt.Opt[auth.Role]) error {
 	var u user.PartialEntity
 
 	err := errors.Join(
@@ -133,7 +76,7 @@ func patch(users user.Patcher, uuid uuid.UUID, name, email, password opt.Opt[str
 		entity.SomeThen(&u.Role, role, user.ProcessRole),
 	)
 	if err != nil {
-		return xerrors.ErrUserUpdate.New(err)
+		return user.ErrUserUpdate.Cause(err).Make()
 	}
 
 	u.Updated = time.Now()

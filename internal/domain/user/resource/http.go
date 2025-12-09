@@ -2,12 +2,12 @@ package users
 
 import (
 	"net/http"
-	"time"
 
-	"github.com/alan-b-lima/almodon/internal/auth"
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
+	
 	"github.com/alan-b-lima/almodon/internal/support/resource"
-	"github.com/alan-b-lima/almodon/internal/xerrors"
+
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
@@ -18,10 +18,10 @@ type Resource struct {
 	Ident auth.Identifier
 }
 
-func New(users user.Service) http.Handler {
+func New(users user.Service, ident auth.Identifier) http.Handler {
 	rc := Resource{
 		Users: auth.NewGatekeeper(users),
-		Ident: users,
+		Ident: ident,
 	}
 
 	routes := map[string]http.HandlerFunc{
@@ -31,8 +31,6 @@ func New(users user.Service) http.Handler {
 		"POST /users/{$}":          rc.Create,
 		"PATCH /users/{uuid}":      rc.Patch,
 		"DELETE /users/{uuid}":     rc.Delete,
-		"POST /users/auth/{$}":     rc.Authenticate,
-		"DELETE /users/auth/{$}":   rc.Logout,
 		"GET /users/me/{$}":        rc.Me,
 		"/":                        resource.NotFound,
 	}
@@ -48,7 +46,7 @@ func (rc *Resource) List(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(rc.Ident, func(act auth.Actor) (user.ListResult, error) {
 		req := user.ListParams{Offset: 0, Limit: 10}
 		if err := resource.QueryParams(r.URL.Query(), &req); err != nil {
-			return user.ListResult{}, xerrors.ErrBadQueryParams.New(err)
+			return user.ListResult{}, resource.ErrBadQueryParams.Cause(err).Make()
 		}
 
 		ent, err := rc.Users.Permit(act).List(req)
@@ -74,7 +72,7 @@ func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(rc.Ident, func(act auth.Actor) (user.Result, error) {
 		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
-			return user.Result{}, xerrors.ErrBadUUID
+			return user.Result{}, resource.ErrBadUUID
 		}
 
 		ent, err := rc.Users.Permit(act).Get(uuid)
@@ -112,7 +110,7 @@ func (rc *Resource) Patch(w http.ResponseWriter, r *http.Request) {
 	resource.PutHandler(rc.Ident, func(act auth.Actor, req user.Patch) error {
 		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
-			return xerrors.ErrBadUUID
+			return resource.ErrBadUUID
 		}
 
 		return rc.Users.Permit(act).Patch(uuid, req)
@@ -123,48 +121,11 @@ func (rc *Resource) Delete(w http.ResponseWriter, r *http.Request) {
 	resource.DeleteHandler(rc.Ident, func(act auth.Actor) error {
 		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
-			return xerrors.ErrBadUUID
+			return resource.ErrBadUUID
 		}
 
 		return rc.Users.Permit(act).Delete(uuid)
 	}, w, r)
-}
-
-func (rc *Resource) Authenticate(w http.ResponseWriter, r *http.Request) {
-	var req user.Authenticate
-	if err := resource.DecodeJSON(&req, r); err != nil {
-		resource.WriteError(w, err)
-		return
-	}
-
-	res, err := rc.Users.Service.Authenticate(req.SIAPE, req.Password)
-	if err != nil {
-		resource.WriteError(w, err)
-		return
-	}
-
-	resource.SetSession(w, res.UUID, res.Expires)
-
-	if err := resource.EncodeJSON(&res, http.StatusCreated, w, r); err != nil {
-		resource.WriteError(w, err)
-		return
-	}
-}
-
-func (rc *Resource) Logout(w http.ResponseWriter, r *http.Request) {
-	session, err := resource.SessionCookie(r)
-	if err != nil {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	if err := rc.Users.Service.Logout(session); err != nil {
-		resource.WriteError(w, err)
-		return
-	}
-
-	resource.SetSession(w, session, time.Time{})
-	w.WriteHeader(http.StatusNoContent)
 }
 
 func (rc *Resource) Me(w http.ResponseWriter, r *http.Request) {

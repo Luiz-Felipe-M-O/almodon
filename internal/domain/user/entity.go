@@ -5,11 +5,20 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"github.com/alan-b-lima/almodon/internal/auth"
-	"github.com/alan-b-lima/almodon/internal/xerrors"
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/pkg/errors"
-	"github.com/alan-b-lima/almodon/pkg/hash"
+	hashpkg "github.com/alan-b-lima/almodon/pkg/hash"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+)
+
+const (
+	PasswordMinLen = 64
+	PasswordMaxLen = 64
+)
+
+var (
+	reEmail     = regexp.MustCompile(`^[0-9A-Za-z_%+-]+(\.[0-9A-Za-z_%+-]+)*@[0-9A-Za-z-]+(\.[0-9A-Za-zA-Z-]+)*\.[A-Za-z]{2,}$`)
+	acceptRoles = [...]auth.Role{auth.User, auth.Admin, auth.Chief}
 )
 
 type User struct {
@@ -37,7 +46,7 @@ func New(siape, name, email, password string, role auth.Role) (User, error) {
 		u.SetRole(role),
 	)
 	if err != nil {
-		return User{}, xerrors.ErrUserCreation.New(err)
+		return User{}, ErrUserCreate.Cause(err).Make()
 	}
 
 	u.uuid = uuid.NewUUIDv7()
@@ -45,7 +54,7 @@ func New(siape, name, email, password string, role auth.Role) (User, error) {
 }
 
 func (u *User) UUID() uuid.UUID    { return u.uuid }
-func (u *User) SIAPE() string         { return u.siape }
+func (u *User) SIAPE() string      { return u.siape }
 func (u *User) Name() string       { return u.name }
 func (u *User) Email() string      { return u.email }
 func (u *User) Password() [60]byte { return u.password }
@@ -57,66 +66,70 @@ func (u *User) SetEmail(email string) error       { return set(&u.email, email, 
 func (u *User) SetPassword(password string) error { return set(&u.password, password, ProcessPassword) }
 func (u *User) SetRole(role auth.Role) error      { return set(&u.role, role, ProcessRole) }
 
+func ComparePassword(hash, password []byte) error {
+	if hashpkg.Compare(hash, password) {
+		return nil
+	}
+
+	return ErrPasswordIncorrect
+}
+
 func ProcessSiape(siape string) (string, error) {
 	return siape, nil
 }
 
 func ProcessName(name string) (string, error) {
 	if name == "" {
-		return "", xerrors.ErrNameEmpty
+		return "", ErrNameEmpty
 	}
 
 	return name, nil
 }
 
-var reEmail = regexp.MustCompile(`^[0-9A-Za-z_%+-]+(\.[0-9A-Za-z_%+-]+)*@[0-9A-Za-z-]+(\.[0-9A-Za-zA-Z-]+)*\.[A-Za-z]{2,}$`)
-
 func ProcessEmail(email string) (string, error) {
 	if !reEmail.MatchString(email) {
-		return "", xerrors.ErrEmailInvalid
+		return "", ErrEmailInvalid
 	}
 
 	return email, nil
 }
 
 func ProcessPassword(password string) ([60]byte, error) {
-	if len(password) < 8 {
-		return [60]byte{}, xerrors.ErrPasswordTooShort
+	if len(password) < PasswordMinLen {
+		return [60]byte{}, ErrPasswordTooShort
 	}
 
-	if len(password) > 64 {
-		return [60]byte{}, xerrors.ErrPasswordTooLong
+	if len(password) > PasswordMaxLen {
+		return [60]byte{}, ErrPasswordTooLong
 	}
 
 	switch password[0] {
 	case ' ', '\t', '\n', '\r':
-		return [60]byte{}, xerrors.ErrPasswordLeadOrTrailWhitespace
+		return [60]byte{}, ErrPasswordLeadOrTrailWhitespace
 	}
 
 	switch password[len(password)-1] {
 	case ' ', '\t', '\n', '\r':
-		return [60]byte{}, xerrors.ErrPasswordLeadOrTrailWhitespace
+		return [60]byte{}, ErrPasswordLeadOrTrailWhitespace
 	}
 
 	for _, rune := range password {
 		if rune < ' ' || !utf8.ValidRune(rune) {
-			return [60]byte{}, xerrors.ErrPasswordIllegalCharacters
+			return [60]byte{}, ErrPasswordIllegalCharacters
 		}
 	}
 
-	hash, err := hash.Hash([]byte(password))
+	hash, err := hashpkg.Hash([]byte(password))
 	if err != nil {
-		return [60]byte{}, xerrors.ErrFailedToHashPassword.New(err)
+		return [60]byte{}, ErrPasswordFailedToHash.Cause(err).Make()
 	}
 
 	return hash, nil
 }
 
-var acceptRoles = [...]auth.Role{auth.User, auth.Admin, auth.Chief}
-
 func ProcessRole(role auth.Role) (auth.Role, error) {
 	if !slices.Contains(acceptRoles[:], role) {
-		return 0, xerrors.ErrRoleInvalid.New(acceptRoles)
+		return 0, ErrRoleInvalid
 	}
 
 	return role, nil

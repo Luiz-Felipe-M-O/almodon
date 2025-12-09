@@ -1,7 +1,7 @@
 package userserve
 
 import (
-	"github.com/alan-b-lima/almodon/internal/auth"
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
 	"github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
@@ -16,7 +16,7 @@ func New(service user.Service) user.Service {
 	return &Gate{Service: service}
 }
 
-var permChief = auth.Permit(auth.Chief)
+var permChief = auth.Allow(auth.Chief)
 
 func (s *Gate) Allow(act auth.Actor) user.Service {
 	return &Gate{

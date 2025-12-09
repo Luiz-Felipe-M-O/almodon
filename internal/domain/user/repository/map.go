@@ -10,10 +10,12 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/alan-b-lima/almodon/internal/auth"
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
+	userpkg "github.com/alan-b-lima/almodon/internal/domain/user"
+
 	repo "github.com/alan-b-lima/almodon/internal/support/repository"
-	"github.com/alan-b-lima/almodon/internal/xerrors"
+
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
@@ -128,7 +130,7 @@ func (m *Map) Get(uuid uuid.UUID) (user.Entity, error) {
 
 	index, in := m.uuid[uuid]
 	if !in {
-		return user.Entity{}, xerrors.ErrUserNotFound
+		return user.Entity{}, user.ErrUserNotFound
 	}
 
 	return m.repo[index], nil
@@ -140,7 +142,7 @@ func (m *Map) GetBySIAPE(siape string) (user.Entity, error) {
 
 	index, in := m.siape[siape]
 	if !in {
-		return user.Entity{}, xerrors.ErrUserNotFound
+		return user.Entity{}, user.ErrUserNotFound
 	}
 
 	return m.repo[index], nil
@@ -151,7 +153,7 @@ func (m *Map) Create(user user.Entity) error {
 	m.mu.Lock()
 
 	if _, in := m.siape[user.SIAPE]; in {
-		return xerrors.ErrSiapeTaken
+		return userpkg.ErrSiapeTaken
 	}
 
 	m.uuid.Set(user.UUID, len(m.repo))
@@ -167,14 +169,14 @@ func (m *Map) Patch(uuid uuid.UUID, user user.PartialEntity) error {
 
 	index, in := m.uuid[uuid]
 	if !in {
-		return xerrors.ErrUserNotFound
+		return userpkg.ErrUserNotFound
 	}
 
 	u := &m.repo[index]
 
 	if role, ok := user.Role.Unwrap(); ok {
 		if role != u.Role && u.Role == auth.Chief && !enough_chiefs(m) {
-			return xerrors.ErrNotEnoughChiefs
+			return userpkg.ErrNotEnoughChiefs
 		} else {
 			u.Role = role
 		}
@@ -199,7 +201,7 @@ func (m *Map) Delete(uuid uuid.UUID) error {
 
 	u := &m.repo[index]
 	if u.Role == auth.Chief && !enough_chiefs(m) {
-		return xerrors.ErrNotEnoughChiefs
+		return user.ErrNotEnoughChiefs
 	}
 
 	m.uuid.Del(u.UUID)
@@ -218,14 +220,20 @@ func (m *Map) Delete(uuid uuid.UUID) error {
 }
 
 func enough_chiefs(m *Map) bool {
-	var count int
+	var found bool
 	for _, user := range m.repo {
-		if user.Role == auth.Chief {
-			count++
+		if user.Role != auth.Chief {
+			continue
+		}
+
+		if !found {
+			found = true
+		} else {
+			return true
 		}
 	}
 
-	return count >= 2
+	return false
 }
 
 func clamp[T cmp.Ordered](mn, val, mx T) T {
