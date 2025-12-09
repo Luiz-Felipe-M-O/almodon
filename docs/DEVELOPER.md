@@ -805,4 +805,4 @@ go mod tidy
 
 ---
 
-_Última atualização: 3 de Junho de 2024 - Versão: 1.0.0_
+_Última atualização: 3 de Dezembro de 2025 - Versão: 1.0.0_
