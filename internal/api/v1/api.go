@@ -4,20 +4,20 @@ import (
 	"errors"
 	"net/http"
 
-	itemrepo "github.com/alan-b-lima/almodon/internal/domain/item/repository"
-	items "github.com/alan-b-lima/almodon/internal/domain/item/resource"
-	itemserve "github.com/alan-b-lima/almodon/internal/domain/item/service"
-	materialrepo "github.com/alan-b-lima/almodon/internal/domain/material/repository"
-	materials "github.com/alan-b-lima/almodon/internal/domain/material/resource"
-	materialserve "github.com/alan-b-lima/almodon/internal/domain/material/service"
+	auths "github.com/alan-b-lima/almodon/internal/domain/auth/resource"
+	authserve "github.com/alan-b-lima/almodon/internal/domain/auth/service"
+
 	promotionrepo "github.com/alan-b-lima/almodon/internal/domain/promotion/repository"
 	promotions "github.com/alan-b-lima/almodon/internal/domain/promotion/resource"
 	promotionserve "github.com/alan-b-lima/almodon/internal/domain/promotion/service"
+
 	sessionrepo "github.com/alan-b-lima/almodon/internal/domain/session/repository"
 	sessionserve "github.com/alan-b-lima/almodon/internal/domain/session/service"
+
 	userrepo "github.com/alan-b-lima/almodon/internal/domain/user/repository"
 	users "github.com/alan-b-lima/almodon/internal/domain/user/resource"
 	userserve "github.com/alan-b-lima/almodon/internal/domain/user/service"
+
 	"github.com/alan-b-lima/almodon/pkg/closer"
 )
 
@@ -30,44 +30,36 @@ func New() (*Handler, error) {
 	var h Handler
 
 	var (
-		RepoItems, errRepoItems         = itemrepo.NewPersistentMap("../.data/items.json")
-		RepoMaterials, errRepoMaterials = materialrepo.NewPersistentMap("../.data/materials.json")
-		RepoPromotions                  = promotionrepo.NewMap()
-		RepoSessions                    = sessionrepo.NewMap()
-		RepoUsers, errRepoUsers         = userrepo.NewPersistantMap("../.data/users.json")
+		RepoPromotions          = promotionrepo.NewMap()
+		RepoSessions            = sessionrepo.NewMap()
+		RepoUsers, errRepoUsers = userrepo.NewPersistantMap("../.data/users.json")
 	)
-	err := errors.Join(errRepoItems, errRepoMaterials, errRepoUsers)
+	err := errors.Join(errRepoUsers)
 	if err != nil {
-		closer.CloseMany(RepoItems, RepoMaterials, RepoPromotions, RepoSessions, RepoUsers)
+		closer.CloseMany(RepoPromotions, RepoSessions, RepoUsers)
 		return nil, err
 	}
 
 	var (
-		CoreItems      = &itemserve.Core{RepoItems}
-		CoreMaterials  = &materialserve.Core{RepoMaterials}
-		CorePromotions = &promotionserve.Core{RepoPromotions, nil}
 		CoreSessions   = &sessionserve.Core{RepoSessions}
-		CoreUsers      = &userserve.Core{RepoUsers, CoreSessions, CorePromotions}
+		CoreUsers      = &userserve.Core{RepoUsers}
+		CorePromotions = &promotionserve.Core{RepoPromotions, CoreUsers}
+		CoreAuth       = &authserve.Core{CoreUsers, CoreSessions, CorePromotions}
 	)
-	CorePromotions.Users = CoreUsers
 
 	var (
-		ServiceItems      = itemserve.New(CoreItems)
-		ServiceMaterials  = materialserve.New(CoreMaterials)
 		ServicePromotions = promotionserve.New(CorePromotions)
 		ServiceUsers      = userserve.New(CoreUsers)
 	)
 
 	var (
-		items      = items.New(ServiceItems, ServiceUsers)
-		materials  = materials.New(ServiceMaterials, ServiceUsers)
-		promotions = promotions.New(ServicePromotions, ServiceUsers)
-		users      = users.New(ServiceUsers)
+		auth       = auths.New(CoreAuth)
+		promotions = promotions.New(ServicePromotions, CoreAuth)
+		users      = users.New(ServiceUsers, CoreAuth)
 	)
 
 	resources := map[string]http.Handler{
-		"items":      items,
-		"materials":  materials,
+		"auth":       auth,
 		"promotions": promotions,
 		"users":      users,
 	}
@@ -77,10 +69,10 @@ func New() (*Handler, error) {
 	}
 
 	h.cleanup.BundleMany(
-		RepoItems, RepoMaterials, RepoPromotions, RepoSessions, RepoUsers,
-		CoreItems, CoreMaterials, CorePromotions, CoreSessions, CoreUsers,
-		ServiceItems, ServiceMaterials, ServicePromotions, ServiceUsers,
-		items, materials, promotions, users,
+		RepoPromotions, RepoSessions, RepoUsers,
+		CorePromotions, CoreSessions, CoreUsers, CoreAuth,
+		ServicePromotions, ServiceUsers,
+		auth, promotions, users,
 	)
 
 	return &h, nil
