@@ -6,6 +6,10 @@ type Closer interface {
 	Close() error
 }
 
+type CloserFunc func() error
+
+func (f CloserFunc) Close() error { return f() }
+
 type Bundle struct {
 	cleanup []Closer
 }
@@ -17,6 +21,10 @@ func (b *Bundle) Bundle(a any) bool {
 	}
 
 	return false
+}
+
+func (b *Bundle) BundleFunc(f func() error) {
+	b.Bundle(CloserFunc(f))
 }
 
 func (b *Bundle) BundleMany(a ...any) {
