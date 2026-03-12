@@ -22,7 +22,7 @@ import (
 // A partial ordering is defined as a relation h over a set L, x, y, z in L,
 // that fulfills:
 //   - Reflexivity: h(x, x) is true;
-//   - Antisymmetry: if h(x, y) is true, then h(y, x) is false; and
+//   - Antisymmetry: if h(x, y) is true, then h(y, x) is false, if x != y; and
 //   - Transitivity: if h(x, y) and h(y, z) are true, then h(x, z) is true.
 type Hierarchy[R any] func(R, R) bool
 
