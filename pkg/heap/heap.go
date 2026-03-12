@@ -32,11 +32,24 @@ type Lesser[T any] interface {
 	Less(T) bool
 }
 
-// Make preallocates memory for a heap with a certain
-// capacity.
-func Make[T Lesser[T]](cap int) Heap[T] {
+// Make preallocates memory for a heap of type T with the
+// given size. If no size is given, it defaults to 0.
+// 
+// Make panics if the size is negative, or if more than one
+// argument is given.
+func Make[T Lesser[T]](size ...int) Heap[T] {
+	if len(size) == 0 {
+		size = []int{0}
+	}
+	if size[0] < 0 {
+		panic("heap: size cannot be negative")
+	}
+	if len(size) > 1 {
+		panic("heap: too many arguments")
+	}
+
 	return Heap[T]{
-		_heap: _heap[T]{make([]T, 0, cap)},
+		_heap: _heap[T]{make([]T, 0, size[0])},
 	}
 }
 
@@ -81,7 +94,7 @@ func (h *Heap[T]) Pop() T {
 //
 // Peek panics if the heap is empty.
 //
-// The complexity is O(log n) where n = h.Len().
+// The complexity is O(1).
 func (h *Heap[T]) Peek() T {
 	if h.Len() == 0 {
 		panic("heap: cannot peek into an empty heap")
@@ -109,7 +122,10 @@ func (h *_heap[T]) Push(v any) {
 }
 
 func (h *_heap[T]) Pop() any {
+	var zero T
 	last := h.ess[len(h.ess)-1]
+	h.ess[len(h.ess)-1] = zero
+
 	h.ess = h.ess[:len(h.ess)-1]
 	return last
 }
