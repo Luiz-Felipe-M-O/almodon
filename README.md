@@ -13,7 +13,7 @@ Almodon é um sistemas de gestão que tem como objetivo auxiliar as atividades d
 
 ## Documentação
 
-A documentação do Almodon está disponível no [Manual do Desenvolvedor](./docs/DEVELOPER.html). Lá é encontrado informações detalhadas sobre a arquitetura do sistema, instruções de instalação, guias de contribuição e muito mais.
+O rascunho da documentação do Almodon está disponível no [Manual do Desenvolvedor](./docs/DRAFT.md). Lá é encontrado informações sobre a arquitetura do sistema, instruções de instalação, guias de contribuição e mais.
 
 ## Licença
 
