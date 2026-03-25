@@ -19,7 +19,7 @@ type Authorizer interface {
 }
 
 type (
-	Request struct {
+	Create struct {
 		SIAPE    string `json:"siape"`
 		Password string `json:"password"`
 	}

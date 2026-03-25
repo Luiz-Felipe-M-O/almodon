@@ -31,7 +31,7 @@ func New(auth auth.Service) http.Handler {
 }
 
 func (rc *Resource) Login(w http.ResponseWriter, r *http.Request) {
-	var req auth.Request
+	var req auth.Create
 	if err := resource.DecodeJSON(&req, r); err != nil {
 		resource.WriteError(w, err)
 		return
