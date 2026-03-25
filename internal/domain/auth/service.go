@@ -11,10 +11,10 @@ type Service interface {
 	Login(ctx context.Context, siape string, password string) (Result, error)
 	Logout(ctx context.Context, session uuid.UUID) error
 
-	Identifier
+	Authorizer
 }
 
-type Identifier interface {
+type Authorizer interface {
 	Actor(ctx context.Context, session uuid.UUID) (Actor, error)
 }
 
