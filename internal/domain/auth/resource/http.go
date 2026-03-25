@@ -10,13 +10,11 @@ import (
 type Resource struct {
 	http.ServeMux
 	Auth auth.Service
-
-	Ident auth.Identifier
 }
 
-func New(ident auth.Identifier) http.Handler {
+func New(auth auth.Service) http.Handler {
 	rc := Resource{
-		Ident: ident,
+		Auth: auth,
 	}
 
 	routes := map[string]http.HandlerFunc{
@@ -39,7 +37,7 @@ func (rc *Resource) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := rc.Auth.Login(req.SIAPE, req.Password)
+	res, err := rc.Auth.Login(r.Context(), req.SIAPE, req.Password)
 	if err != nil {
 		resource.WriteError(w, err)
 		return
@@ -60,7 +58,7 @@ func (rc *Resource) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := rc.Auth.Logout(session); err != nil {
+	if err := rc.Auth.Logout(r.Context(), session); err != nil {
 		resource.WriteError(w, err)
 		return
 	}

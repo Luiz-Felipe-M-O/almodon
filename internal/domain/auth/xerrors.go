@@ -1,10 +1,10 @@
 package auth
 
 import (
-	"github.com/alan-b-lima/almodon/pkg/errors"
+	"github.com/alan-b-lima/pkg/problem"
 )
 
 var (
-	ErrUnauthenticated = errors.Imp(errors.Unauthentic, "unauthenticated").Message("unauthenticated user")
-	ErrUnauthorized    = errors.Imp(errors.Forbidden, "unauthorized").Format("actor role %v does not inherit any roles in %v")
+	ErrUnauthenticated = problem.Imp(problem.Unauthenticated, "unauthenticated").Message("unauthenticated user")
+	ErrUnauthorized    = problem.Imp(problem.Unauthorized, "unauthorized").Format("actor role %v does not inherit any roles in %v")
 )

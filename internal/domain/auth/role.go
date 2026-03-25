@@ -3,7 +3,7 @@ package auth
 import (
 	"errors"
 
-	"github.com/alan-b-lima/almodon/pkg/auth"
+	"github.com/alan-b-lima/almodon/pkg/rbac"
 )
 
 // Role represents a user role in the system.
@@ -13,41 +13,34 @@ const (
 	// Unlogged represents a user that is not logged in.
 	Unlogged Role = iota
 
-	valid_start // exclusive, for validity checks
+	Maintainer // Maintainer represents a system maintainer.
 
-	// Chief represents a department head/chief user.
-	Chief
-
-	// Promoted represents a promoted administrative technician user.
-	Promoted
-
-	// Admin represents a standard administrative technician user.
-	Admin
-
-	// User represents a standard user.
-	User
-
-	valid_end // exclusive, for validity checks
+	Chief    // Chief represents a department head/chief user.
+	Promoted // Promoted represents a promoted administrative technician user.
+	Admin    // Admin represents a standard administrative technician user.
+	User     // User represents a standard user.
 
 	invalid // sentinel value
 )
 
-func Allow(classes ...Role) auth.Permission[Role] {
-	return auth.Allow(DefaultHierarchy, classes...)
+func Allow(classes ...Role) rbac.Permission[Role] {
+	return rbac.Allow(DefaultHierarchy, classes...)
+}
+
+func Authorize(perms rbac.Permission[Role], actor Actor) error {
+	if !perms.Authorize(actor.Role) {
+		return ErrUnauthorized.
+			Details(map[string]any{"allowed": perms}).
+			Make(actor.Role, perms)
+	}
+
+	return nil
 }
 
 // IsValid returns whether the role refers to an actual role, that
 // is, not unlogged an on the defined range.
 func (l Role) IsValid() bool {
-	return valid_start < l && l < valid_end
-}
-
-// IsValidOrUnlogged returns whether the role refers to an actual
-// role or unlogged, equivalent to:
-//
-//	l == Unlogged || l.IsValid()
-func (l Role) IsValidOrUnlogged() bool {
-	return l == Unlogged || valid_start < l && l < valid_end
+	return l != Unlogged && l < invalid
 }
 
 // String returns the string representation of the Role.
@@ -79,22 +72,22 @@ func (l *Role) UnmarshalJSON(data []byte) error {
 
 // DefaultHierarchy defines a partial ordering in the Role type.
 //
-// If [DefaultHierarchy](r0, r1) evaluates to true, then the
-// permissions of r0 are inherited by r1.
-func DefaultHierarchy(r0, r1 Role) bool {
-	if !r0.IsValidOrUnlogged() || !r1.IsValidOrUnlogged() {
+// If [DefaultHierarchy](x, y) evaluates to true, then the
+// permissions of x are inherited by y.
+func DefaultHierarchy(x, y Role) bool {
+	if !x.IsValid() || !y.IsValid() {
 		return false
 	}
 
-	if r0 == Unlogged {
+	if x == Unlogged {
 		return true
 	}
 
-	if r1 == Unlogged {
+	if y == Unlogged {
 		return false
 	}
 
-	return r0 >= r1
+	return x >= y
 }
 
 // FromString returns the Role corresponding to the given string. If
@@ -110,10 +103,11 @@ func FromString(string string) (Role, bool) {
 }
 
 var roleStrings = map[Role]string{
-	Chief:    "chief",
-	Promoted: "promoted-admin",
-	Admin:    "admin",
-	User:     "user",
+	Maintainer: "maintainer",
+	Chief:      "chief",
+	Promoted:   "promoted-admin",
+	Admin:      "admin",
+	User:       "user",
 
 	Unlogged: "unlogged",
 }
