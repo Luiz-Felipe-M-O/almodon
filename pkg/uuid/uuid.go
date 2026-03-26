@@ -123,6 +123,12 @@ func FromString(str string) (UUID, error) {
 	return uuid, nil
 }
 
+// Bytes returns the byte slice representation of the UUID. Changing the
+// returned byte slice will change the original UUID, and vice versa.
+func (uuid UUID) Bytes() []byte {
+	return uuid[:]
+}
+
 // Implements the interface [fmt.Stringer] on the UUID type.
 func (uuid UUID) String() string {
 	return fmt.Sprintf(_UUIDFormat,
