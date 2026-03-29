@@ -15,11 +15,9 @@ import (
 	"github.com/alan-b-lima/almodon/internal/support/middleware"
 )
 
-var StdOut = os.Stdout
-
 func main() {
-	log := middleware.NewLogger(StdOut, "")
-	style := middleware.Styles()
+	log := middleware.NewLogger(os.Stdout, "")
+	style := middleware.DefaultStyle()
 
 	ln, err := net.Listen("tcp", ":4545")
 	if err != nil {
@@ -39,23 +37,23 @@ func main() {
 		}
 	}()
 
-	srv := http.Server{Handler: middleware.LogTraffic(log, style, MakeMux(api))}
+	server := http.Server{Handler: middleware.LogTraffic(log, style, MakeMux(api))}
 	done := EnableGracefulShutdown(func() {
 		log.Info("Shutting server down...")
-		srv.Shutdown(context.Background())
+		server.Shutdown(context.Background())
 	})
 
 	url := "http://" + strings.Replace(ln.Addr().String(), "[::]", "localhost", 1)
 	log.Infof("Server listening at %s\n", style.HyperLink(url))
 
-	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
+	if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 		log.Error(err)
 	}
 
 	<-done
 }
 
-func MakeMux(api *api.Handler) *http.ServeMux {
+func MakeMux(api *api.Almodon) *http.ServeMux {
 	mux := new(http.ServeMux)
 
 	fs := http.FileServer(http.Dir("../ui/web/dist/"))

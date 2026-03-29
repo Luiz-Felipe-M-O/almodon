@@ -11,37 +11,26 @@
 package uuid
 
 import (
-	crand "crypto/rand"
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"sync"
 	"time"
 	"unsafe"
 )
 
-// This represents a 128bit UUID type. Elements of this type can, and
-// should, be compared using the == operator. The zero value of UUID
-// is classified as a Nil UUID according to RFC9562 section 5.9.
+// UUID represents a 128bit unique identifier. Elements of this type can, and
+// should, be compared using the == operator.
 type UUID [16]byte
+
+// Nil is the zero value of UUID, according to RFC9562 section 5.9.
+var Nil UUID
 
 const (
 	_62BitMask = (1 << 62) - 1
 	_48BitMask = (1 << 48) - 1
 	_12BitMask = (1 << 12) - 1
 )
-
-var (
-	source rand.Source // The source for all pseudo-random number needed.
-	mulock sync.Mutex  // A mutex for safe concurrent UUID generation.
-)
-
-func init() {
-	var seed [2]uint64
-	crand.Read(unsafe.Slice((*byte)(unsafe.Pointer(&seed)), 16))
-
-	source = rand.NewPCG(seed[0], seed[1])
-}
 
 var (
 	ErrBadSliceLength = errors.New("uuid: slice does not has 16 bytes")
@@ -78,11 +67,7 @@ func NewUUIDv7() UUID {
 	)
 
 	unixTimestamp := uint64(time.Now().UnixMilli() & _48BitMask)
-
-	mulock.Lock()
-	randA := source.Uint64() & _12BitMask
-	randB := source.Uint64() & _62BitMask
-	mulock.Unlock()
+	randA, randB := next()
 
 	return UUID{
 		0x0: byte(unixTimestamp >> 0x28), 0x1: byte(unixTimestamp >> 0x20),
@@ -138,11 +123,10 @@ func FromString(str string) (UUID, error) {
 	return uuid, nil
 }
 
-// Verifies whether the given UUID is the Nil UUID. Not be confused
-// with a nil pointer to an UUID. Equivalent to using == against the
-// zero value of this type.
-func (uuid UUID) IsNil() bool {
-	return uuid == UUID{}
+// Bytes returns the byte slice representation of the UUID. Changing the
+// returned byte slice will change the original UUID, and vice versa.
+func (uuid UUID) Bytes() []byte {
+	return uuid[:]
 }
 
 // Implements the interface [fmt.Stringer] on the UUID type.
@@ -175,4 +159,46 @@ func (uuid *UUID) UnmarshalJSON(buf []byte) error {
 
 	*uuid = decoded
 	return nil
+}
+
+var (
+	pool   [10 * 256]byte // pool is the source for all pseudo-random number needed.
+	offset = len(pool)    // offset is the offset of pseudo-random numbers into pool.
+
+	mu sync.Mutex // A mutex for safe concurrent UUID generation.
+)
+
+func next() (uint64, uint64) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if offset >= len(pool) {
+		pointer := unsafe.Pointer(unsafe.SliceData(pool[:]))
+		pool := unsafe.Slice((*byte)(pointer), 8*len(pool))
+
+		rand.Read(pool)
+		offset = 0
+	}
+
+	var randA uint64
+	randA |= uint64(pool[offset+0]) << 0x8
+	randA |= uint64(pool[offset+1]) << 0x0
+
+	randA &= _12BitMask
+	offset += 2
+
+	var randB uint64
+	randB |= uint64(pool[offset+0]) << 0x38
+	randB |= uint64(pool[offset+1]) << 0x30
+	randB |= uint64(pool[offset+2]) << 0x28
+	randB |= uint64(pool[offset+3]) << 0x20
+	randB |= uint64(pool[offset+4]) << 0x18
+	randB |= uint64(pool[offset+5]) << 0x10
+	randB |= uint64(pool[offset+6]) << 0x08
+	randB |= uint64(pool[offset+7]) << 0x00
+
+	randB &= _62BitMask
+	offset += 8
+
+	return randA, randB
 }

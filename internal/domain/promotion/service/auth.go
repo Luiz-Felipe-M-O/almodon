@@ -1,7 +1,9 @@
 package promotionserve
 
 import (
-	"github.com/alan-b-lima/almodon/internal/auth"
+	"context"
+
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
 	"github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
@@ -9,60 +11,59 @@ import (
 
 type Gate struct {
 	promotion.Service
-	actor auth.Actor
+	Gate auth.Authenticator
 }
 
-func New(promotions promotion.Service) promotion.Service {
+func New(promotions promotion.Service, gate auth.Authenticator) promotion.Service {
 	return &Gate{
 		Service: promotions,
+		Gate:    gate,
 	}
 }
 
-var permChief = auth.Permit(auth.Chief)
+var perm_chief = auth.Allow(auth.Chief)
 
-func (s *Gate) Allow(act auth.Actor) promotion.Service {
-	return &Gate{
-		Service: s.Service,
-		actor:   act,
-	}
-}
-
-func (a *Gate) List(req promotion.ListParams) (promotion.Entities, error) {
-	if err := service.Authorize(permChief, a.actor); err != nil {
-		return promotion.Entities{}, err
+func (g *Gate) Get(ctx context.Context, uuid uuid.UUID) (promotion.Result, error) {
+	_, err := service.AuthorizeFromContext(ctx, g.Gate, perm_chief)
+	if err != nil {
+		return promotion.Result{}, err
 	}
 
-	return a.Service.List(req)
+	return g.Service.Get(ctx, uuid)
 }
 
-func (a *Gate) Get(uuid uuid.UUID) (promotion.Entity, error) {
-	if err := service.Authorize(permChief, a.actor); err != nil {
-		return promotion.Entity{}, err
+func (g *Gate) GetByUser(ctx context.Context, uuid uuid.UUID) (promotion.Result, error) {
+	_, err := service.AuthorizeFromContext(ctx, g.Gate, perm_chief)
+	if err != nil {
+		return promotion.Result{}, err
 	}
 
-	return a.Service.Get(uuid)
+	return g.Service.GetByUser(ctx, uuid)
 }
 
-func (a *Gate) Create(req promotion.Create) (uuid.UUID, error) {
-	if err := service.Authorize(permChief, a.actor); err != nil {
-		return uuid.UUID{}, err
+func (g *Gate) Create(ctx context.Context, req promotion.Create) (promotion.CreateResult, error) {
+	_, err := service.AuthorizeFromContext(ctx, g.Gate, perm_chief)
+	if err != nil {
+		return promotion.CreateResult{}, err
 	}
 
-	return a.Service.Create(req)
+	return g.Service.Create(ctx, req)
 }
 
-func (a *Gate) Update(uuid uuid.UUID, req promotion.Update) error {
-	if err := service.Authorize(permChief, a.actor); err != nil {
+func (g *Gate) Update(ctx context.Context, uuid uuid.UUID, req promotion.Update) error {
+	_, err := service.AuthorizeFromContext(ctx, g.Gate, perm_chief)
+	if err != nil {
 		return err
 	}
 
-	return a.Service.Update(uuid, req)
+	return g.Service.Update(ctx, uuid, req)
 }
 
-func (a *Gate) Delete(uuid uuid.UUID) error {
-	if err := service.Authorize(permChief, a.actor); err != nil {
+func (g *Gate) Delete(ctx context.Context, uuid uuid.UUID) error {
+	_, err := service.AuthorizeFromContext(ctx, g.Gate, perm_chief)
+	if err != nil {
 		return err
 	}
 
-	return a.Service.Delete(uuid)
+	return g.Service.Delete(ctx, uuid)
 }

@@ -12,9 +12,9 @@ Como a linguagem Go tem sua estrutura de controle e biblioteca padrão escritas 
 
 ### 2. Padrão de nomeação de identificadores
 
-Identificadores exportados, naturalmente, seguem PascalCase, até mesmo constantes e variáveis exportadas.
+Identificadores exportados, naturalmente, seguem PascalCase, até mesmo constantes e variáveis exportadas. Isto é, não usar SCREAMING_SNAKE_CASE.
 
-Identificadores não constantes não exportados e parametros e variáveis em escopos seguem camelCase.
+Identificadores não constantes não exportados e parametros e variáveis em escopos seguem snake_case.
 
 (Talvez seja revogada) Identificadores constantes não exportados seguem _PascalCase, que é o mesmo que PascalCase, mas com um underline (`_`), prefixado.
 
@@ -105,7 +105,7 @@ O `<tipo>` pode ser um dos valores a seguir:
 - `style`: para mudanças que não afetam o significado do código (espaços em branco, formatação, etc)
 - `merge`: para commits de merge
 
-O `<escopo>` refere-se ao pacote ou unidade semântica afetada pelo commit, mudanças que envolvem mais de um pacote ou unidade semântica em um único commit devem ser evitadas.
+O `<escopo>` refere-se ao pacote ou unidade semântica afetada pelo commit, mudanças que envolvem mais de um pacote ou unidade semântica em um único commit devem ser evitados.
 
 O `!` opcional descreve `BREAKING CHANGE`, que é presente quando uma API pública é alterada, que pode fazer outros pacotes, em cascata, terem que ser alterados.
 

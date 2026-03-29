@@ -1,0 +1,12 @@
+package session
+
+import "github.com/alan-b-lima/pkg/problem"
+
+var (
+	ErrCreate   = problem.Imp(problem.SemanticalError, "session-create").Message("could not create session")
+	ErrUpdate   = problem.Imp(problem.SemanticalError, "session-update").Message("could not update session")
+	ErrNotFound = problem.New(problem.NotFound, "session-not-found", "session not found", nil, nil)
+
+	ErrUnrenewable = problem.New(problem.SemanticalError, "session-renewed-exceeded", "session renewed too many times", nil, map[string]any{"max": MaxRenews})
+	ErrTooLong     = problem.New(problem.SemanticalError, "session-too-long", "session too long", nil, map[string]any{"max": MaxAgeMax})
+)

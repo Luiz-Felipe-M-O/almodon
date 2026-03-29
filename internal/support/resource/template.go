@@ -1,19 +1,18 @@
 package resource
 
 import (
+	"context"
 	"net/http"
-
-	"github.com/alan-b-lima/almodon/internal/auth"
 )
 
-func GetHandler[TRes any](gk auth.Identifier, proc func(auth.Actor) (TRes, error), w http.ResponseWriter, r *http.Request) {
-	act, err := Session(gk, r)
+func GetHandler[TRes any](ctx context.Context, proc func(context.Context) (TRes, error), w http.ResponseWriter, r *http.Request) {
+	ctx, err := Session(ctx, r)
 	if err != nil {
 		WriteError(w, err)
 		return
 	}
 
-	res, err := proc(act)
+	res, err := proc(ctx)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -25,8 +24,8 @@ func GetHandler[TRes any](gk auth.Identifier, proc func(auth.Actor) (TRes, error
 	}
 }
 
-func PostHandler[TRes, TReq any](gk auth.Identifier, proc func(act auth.Actor, req TReq) (TRes, error), w http.ResponseWriter, r *http.Request) {
-	act, err := Session(gk, r)
+func PostHandler[TRes, TReq any](ctx context.Context, proc func(context.Context, TReq) (TRes, error), w http.ResponseWriter, r *http.Request) {
+	ctx, err := Session(ctx, r)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -38,7 +37,7 @@ func PostHandler[TRes, TReq any](gk auth.Identifier, proc func(act auth.Actor, r
 		return
 	}
 
-	uuid, err := proc(act, req)
+	uuid, err := proc(ctx, req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -50,8 +49,8 @@ func PostHandler[TRes, TReq any](gk auth.Identifier, proc func(act auth.Actor, r
 	}
 }
 
-func PutHandler[TReq any](gk auth.Identifier, proc func(act auth.Actor, req TReq) error, w http.ResponseWriter, r *http.Request) {
-	act, err := Session(gk, r)
+func PutHandler[TReq any](ctx context.Context, proc func(context.Context, TReq) error, w http.ResponseWriter, r *http.Request) {
+	ctx, err := Session(ctx, r)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -63,7 +62,7 @@ func PutHandler[TReq any](gk auth.Identifier, proc func(act auth.Actor, req TReq
 		return
 	}
 
-	if err := proc(act, req); err != nil {
+	if err := proc(ctx, req); err != nil {
 		WriteError(w, err)
 		return
 	}
@@ -71,14 +70,14 @@ func PutHandler[TReq any](gk auth.Identifier, proc func(act auth.Actor, req TReq
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func DeleteHandler(auth auth.Identifier, proc func(act auth.Actor) error, w http.ResponseWriter, r *http.Request) {
-	act, err := Session(auth, r)
+func DeleteHandler(ctx context.Context, proc func(context.Context) error, w http.ResponseWriter, r *http.Request) {
+	ctx, err := Session(ctx, r)
 	if err != nil {
 		WriteError(w, err)
 		return
 	}
 
-	if err := proc(act); err != nil {
+	if err := proc(ctx); err != nil {
 		WriteError(w, err)
 		return
 	}

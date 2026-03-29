@@ -40,7 +40,7 @@ type Style struct {
 	enabled bool
 }
 
-func Styles() (s Style) {
+func DefaultStyle() (s Style) {
 	s.enabled = ansi.EnableVirtualTerminal(os.Stdout.Fd()) == nil
 	s.no.SetStyle(false)
 

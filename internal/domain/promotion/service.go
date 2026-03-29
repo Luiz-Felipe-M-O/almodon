@@ -1,17 +1,43 @@
 package promotion
 
-import 	"github.com/alan-b-lima/almodon/pkg/uuid"
+import (
+	"context"
+	"time"
 
+	"github.com/alan-b-lima/almodon/pkg/uuid"
+	"github.com/alan-b-lima/pkg/opt"
+)
 
 type Service interface {
-	List(ListParams) (Entities, error)
+	Get(context.Context, uuid.UUID) (Result, error)
+	GetByUser(context.Context, uuid.UUID) (Result, error)
 
-	Get(uuid.UUID) (Entity, error)
-	GetByUser(uuid.UUID) (Entity, error)
+	Create(context.Context, Create) (CreateResult, error)
 
-	Create(Create) (uuid.UUID, error)
+	Update(context.Context, uuid.UUID, Update) error
 
-	Update(uuid.UUID, Update) error
-
-	Delete(uuid.UUID) error
+	Delete(context.Context, uuid.UUID) error
 }
+
+type (
+	Create struct {
+		User   uuid.UUID              `json:"user"`
+		MaxAge opt.Opt[time.Duration] `json:"max_age"`
+	}
+
+	Update struct {
+		MaxAge opt.Opt[time.Duration] `json:"max_age"`
+	}
+)
+
+type (
+	Result struct {
+		UUID    uuid.UUID `json:"uuid"`
+		User    uuid.UUID `json:"user"`
+		Expires time.Time `json:"expires"`
+	}
+
+	CreateResult struct {
+		UUID uuid.UUID `json:"uuid"`
+	}
+)
