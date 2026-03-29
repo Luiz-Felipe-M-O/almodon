@@ -7,7 +7,9 @@ import (
 	"github.com/alan-b-lima/almodon/internal/domain/user"
 	"github.com/alan-b-lima/almodon/internal/support"
 	"github.com/alan-b-lima/almodon/internal/support/entity"
+
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+
 	"github.com/alan-b-lima/pkg/problem"
 )
 
@@ -16,6 +18,12 @@ type Core struct {
 }
 
 var _ user.Service = (*Core)(nil)
+
+func New(users user.Store) *Core {
+	return &Core{
+		Users: users,
+	}
+}
 
 func (c *Core) List(ctx context.Context) ([]user.Result, error) {
 	recs, err := c.Users.List(ctx)

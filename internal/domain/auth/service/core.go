@@ -11,11 +11,18 @@ import (
 )
 
 type Core struct {
-	Users      user.Service
-	Sessions   session.Service
+	Users    user.Service
+	Sessions session.Service
 }
 
 var _ auth.Service = &Core{}
+
+func New(users user.Service, sessions session.Service) *Core {
+	return &Core{
+		Users:    users,
+		Sessions: sessions,
+	}
+}
 
 func (c *Core) Login(ctx context.Context, siape string, password string) (auth.Result, error) {
 	res, err := c.Users.GetBySIAPE(ctx, siape)

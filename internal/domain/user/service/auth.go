@@ -14,7 +14,7 @@ type Gate struct {
 	Gate auth.Authenticator
 }
 
-func New(service user.Service, gate auth.Authenticator) user.Service {
+func NewGate(service user.Service, gate auth.Authenticator) user.Service {
 	return &Gate{
 		Service: service,
 		Gate:    gate,

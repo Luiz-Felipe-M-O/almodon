@@ -6,17 +6,34 @@ import (
 
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
+	"github.com/alan-b-lima/almodon/internal/support"
 	"github.com/alan-b-lima/almodon/internal/support/entity"
 
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+
+	"github.com/alan-b-lima/pkg/scheduler"
 )
 
 type Core struct {
 	Promotions promotion.Store
 	Users      user.Service
+
+	Scheduler *scheduler.Scheduler
 }
 
 var _ promotion.Service = &Core{}
+
+func New(promotions promotion.Store, users user.Service, scheduler *scheduler.Scheduler) (*Core, error) {
+	if scheduler == nil {
+		return nil, support.ErrNilPointer.Message("scheduler required").Make()
+	}
+
+	return &Core{
+		Promotions: promotions,
+		Users:      users,
+		Scheduler:  scheduler,
+	}, nil
+}
 
 const _MaxAge = 1 * 24 * time.Hour
 
@@ -62,8 +79,10 @@ func (c *Core) Create(ctx context.Context, req promotion.Create) (promotion.Crea
 		return promotion.CreateResult{}, err
 	}
 
-	nreq := promotion.CreateRecord(p)
-	return promotion.CreateResult{UUID: p.UUID}, c.Promotions.Create(ctx, nreq)
+	c.post(p.UUID, p.Expires)
+
+	rec := promotion.CreateRecord(p)
+	return promotion.CreateResult{UUID: p.UUID}, c.Promotions.Create(ctx, rec)
 }
 
 // TODO: verify validity of _MaxAge and turn it to an internal error
@@ -78,10 +97,30 @@ func (c *Core) Update(ctx context.Context, uuid uuid.UUID, req promotion.Update)
 		return err
 	}
 
-	nreq := promotion.UpdateRecord{Expires: expires}
-	return c.Promotions.Update(ctx, uuid, nreq)
+	c.post(uuid, expires)
+
+	rec := promotion.UpdateRecord{Expires: expires}
+	return c.Promotions.Update(ctx, uuid, rec)
 }
 
 func (c *Core) Delete(ctx context.Context, uuid uuid.UUID) error {
 	return c.Promotions.Delete(ctx, uuid)
+}
+
+func (c *Core) post(uuid uuid.UUID, expires time.Time) {
+	c.Scheduler.Post(func() {
+		ctx := context.TODO()
+
+		c.Promotions.RunTx(ctx, func(promotions promotion.Store) error {
+			session, err := promotions.Get(ctx, uuid)
+			if err != nil {
+				return err
+			}
+
+			if time.Now().Before(session.Expires) {
+				return promotions.Delete(ctx, uuid)
+			}
+			return nil
+		})
+	}, expires)
 }
