@@ -1,11 +1,11 @@
 package users
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
-	
+
 	"github.com/alan-b-lima/almodon/internal/support/resource"
 
 	"github.com/alan-b-lima/almodon/pkg/uuid"
@@ -13,15 +13,13 @@ import (
 
 type Resource struct {
 	http.ServeMux
-	Users *auth.Gatekeeper[user.Service]
 
-	Ident auth.Identifier
+	Users user.Service
 }
 
-func New(users user.Service, ident auth.Identifier) http.Handler {
+func New(users user.Service) *Resource {
 	rc := Resource{
-		Users: auth.NewGatekeeper(users),
-		Ident: ident,
+		Users: users,
 	}
 
 	routes := map[string]http.HandlerFunc{
@@ -43,110 +41,75 @@ func New(users user.Service, ident auth.Identifier) http.Handler {
 }
 
 func (rc *Resource) List(w http.ResponseWriter, r *http.Request) {
-	resource.GetHandler(rc.Ident, func(act auth.Actor) (user.ListResult, error) {
-		req := user.ListParams{Offset: 0, Limit: 10}
-		if err := resource.QueryParams(r.URL.Query(), &req); err != nil {
-			return user.ListResult{}, resource.ErrBadQueryParams.Cause(err).Make()
-		}
+	resource.GetHandler(r.Context(), func(ctx context.Context) ([]user.Result, error) {
+		return rc.Users.List(ctx)
+	}, w, r)
+}
 
-		ent, err := rc.Users.Permit(act).List(req)
+func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
+	resource.GetHandler(r.Context(), func(ctx context.Context) (user.Result, error) {
+		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
-			return user.ListResult{}, err
+			return user.Result{}, resource.ErrBadUUID
 		}
 
-		res := user.ListResult{
-			Offset:       ent.Offset,
-			Length:       ent.Length,
-			Records:      make([]user.Result, len(ent.Records)),
-			TotalRecords: ent.TotalRecords,
+		ent, err := rc.Users.Get(ctx, uuid)
+		if err != nil {
+			return user.Result{}, err
 		}
-		for i := range len(ent.Records) {
-			res.Records[i] = transform(&ent.Records[i])
+
+		return ent, nil
+	}, w, r)
+}
+
+func (rc *Resource) GetBySIAPE(w http.ResponseWriter, r *http.Request) {
+	resource.GetHandler(r.Context(), func(ctx context.Context) (user.Result, error) {
+		siape := r.PathValue("siape")
+
+		ent, err := rc.Users.GetBySIAPE(ctx, siape)
+		if err != nil {
+			return user.Result{}, err
+		}
+
+		return ent, nil
+	}, w, r)
+}
+
+func (rc *Resource) Create(w http.ResponseWriter, r *http.Request) {
+	resource.PostHandler(r.Context(), func(ctx context.Context, req user.Create) (user.CreateResult, error) {
+		res, err := rc.Users.Create(ctx, req)
+		if err != nil {
+			return user.CreateResult{}, err
 		}
 
 		return res, nil
 	}, w, r)
 }
 
-func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
-	resource.GetHandler(rc.Ident, func(act auth.Actor) (user.Result, error) {
-		uuid, err := uuid.FromString(r.PathValue("uuid"))
-		if err != nil {
-			return user.Result{}, resource.ErrBadUUID
-		}
-
-		ent, err := rc.Users.Permit(act).Get(uuid)
-		if err != nil {
-			return user.Result{}, err
-		}
-
-		return transform(&ent), nil
-	}, w, r)
-}
-
-func (rc *Resource) GetBySIAPE(w http.ResponseWriter, r *http.Request) {
-	resource.GetHandler(rc.Ident, func(act auth.Actor) (user.Result, error) {
-		ent, err := rc.Users.Permit(act).GetBySIAPE(r.PathValue("siape"))
-		if err != nil {
-			return user.Result{}, err
-		}
-
-		return transform(&ent), nil
-	}, w, r)
-}
-
-func (rc *Resource) Create(w http.ResponseWriter, r *http.Request) {
-	resource.PostHandler(rc.Ident, func(act auth.Actor, req user.Create) (user.CreateResult, error) {
-		res, err := rc.Users.Permit(act).Create(req)
-		if err != nil {
-			return user.CreateResult{}, err
-		}
-
-		return user.CreateResult{UUID: res}, nil
-	}, w, r)
-}
-
 func (rc *Resource) Patch(w http.ResponseWriter, r *http.Request) {
-	resource.PutHandler(rc.Ident, func(act auth.Actor, req user.Patch) error {
+	resource.PutHandler(r.Context(), func(ctx context.Context, req user.Patch) error {
 		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
 			return resource.ErrBadUUID
 		}
 
-		return rc.Users.Permit(act).Patch(uuid, req)
+		return rc.Users.Patch(ctx, uuid, req)
 	}, w, r)
 }
 
 func (rc *Resource) Delete(w http.ResponseWriter, r *http.Request) {
-	resource.DeleteHandler(rc.Ident, func(act auth.Actor) error {
+	resource.DeleteHandler(r.Context(), func(ctx context.Context) error {
 		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
 			return resource.ErrBadUUID
 		}
 
-		return rc.Users.Permit(act).Delete(uuid)
+		return rc.Users.Delete(ctx, uuid)
 	}, w, r)
 }
 
 func (rc *Resource) Me(w http.ResponseWriter, r *http.Request) {
-	resource.GetHandler(rc.Ident, func(act auth.Actor) (user.Result, error) {
-		ent, err := rc.Users.Permit(act).Get(act.User())
-		if err != nil {
-			return user.Result{}, err
-		}
-
-		return transform(&ent), nil
+	resource.GetHandler(r.Context(), func(ctx context.Context) (user.Result, error) {
+		return rc.Users.Me(ctx)
 	}, w, r)
-}
-
-func transform(e *user.Entity) user.Result {
-	return user.Result{
-		UUID:    e.UUID,
-		SIAPE:   e.SIAPE,
-		Name:    e.Name,
-		Email:   e.Email,
-		Role:    e.Role,
-		Created: e.Created,
-		Updated: e.Updated,
-	}
 }

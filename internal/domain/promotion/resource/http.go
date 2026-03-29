@@ -1,10 +1,11 @@
 package promotions
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
+
 	"github.com/alan-b-lima/almodon/internal/support/resource"
 
 	"github.com/alan-b-lima/almodon/pkg/uuid"
@@ -12,19 +13,16 @@ import (
 
 type Resource struct {
 	http.ServeMux
-	Promotions *auth.Gatekeeper[promotion.Service]
 
-	Ident auth.Identifier
+	Promotions promotion.Service
 }
 
-func New(promotions promotion.Service, authorizer auth.Identifier) http.Handler {
+func New(promotions promotion.Service) *Resource {
 	rc := Resource{
-		Promotions: auth.NewGatekeeper(promotions),
-		Ident:      authorizer,
+		Promotions: promotions,
 	}
 
 	routes := map[string]http.HandlerFunc{
-		"GET /promotions/{$}":       rc.List,
 		"GET /promotions/{uuid}":    rc.Get,
 		"POST /promotions/{$}":      rc.Create,
 		"PUT /promotions/{uuid}":    rc.Update,
@@ -39,85 +37,51 @@ func New(promotions promotion.Service, authorizer auth.Identifier) http.Handler 
 	return &rc
 }
 
-func (rc *Resource) List(w http.ResponseWriter, r *http.Request) {
-	resource.GetHandler(rc.Ident, func(act auth.Actor) (promotion.ListResult, error) {
-		req := promotion.ListParams{Offset: 0, Limit: 10}
-		if err := resource.QueryParams(r.URL.Query(), &req); err != nil {
-			return promotion.ListResult{}, resource.ErrBadQueryParams.Cause(err).Make()
-		}
-
-		ent, err := rc.Promotions.Permit(act).List(req)
+func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
+	resource.GetHandler(r.Context(), func(ctx context.Context) (promotion.Result, error) {
+		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
-			return promotion.ListResult{}, err
+			return promotion.Result{}, resource.ErrBadUUID
 		}
 
-		res := promotion.ListResult{
-			Offset:       ent.Offset,
-			Length:       ent.Length,
-			Records:      make([]promotion.Result, len(ent.Records)),
-			TotalRecords: ent.TotalRecords,
+		ent, err := rc.Promotions.Get(ctx, uuid)
+		if err != nil {
+			return promotion.Result{}, err
 		}
-		for i := range len(ent.Records) {
-			transpose(&res.Records[i], &ent.Records[i])
+
+		return promotion.Result(ent), nil
+	}, w, r)
+}
+
+func (rc *Resource) Create(w http.ResponseWriter, r *http.Request) {
+	resource.PostHandler(r.Context(), func(ctx context.Context, req promotion.Create) (promotion.CreateResult, error) {
+		res, err := rc.Promotions.Create(ctx, req)
+		if err != nil {
+			return promotion.CreateResult{}, err
 		}
 
 		return res, nil
 	}, w, r)
 }
 
-func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
-	resource.GetHandler(rc.Ident, func(act auth.Actor) (promotion.Result, error) {
-		uuid, err := uuid.FromString(r.PathValue("uuid"))
-		if err != nil {
-			return promotion.Result{}, resource.ErrBadUUID
-		}
-
-		ent, err := rc.Promotions.Permit(act).Get(uuid)
-		if err != nil {
-			return promotion.Result{}, err
-		}
-
-		return transform(&ent), nil
-	}, w, r)
-}
-
-func (rc *Resource) Create(w http.ResponseWriter, r *http.Request) {
-	resource.PostHandler(rc.Ident, func(act auth.Actor, req promotion.Create) (promotion.CreateResult, error) {
-		res, err := rc.Promotions.Permit(act).Create(req)
-		if err != nil {
-			return promotion.CreateResult{}, err
-		}
-
-		return promotion.CreateResult{UUID: res}, nil
-	}, w, r)
-}
-
 func (rc *Resource) Update(w http.ResponseWriter, r *http.Request) {
-	resource.PutHandler(rc.Ident, func(act auth.Actor, req promotion.Update) error {
+	resource.PutHandler(r.Context(), func(ctx context.Context, req promotion.Update) error {
 		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
 			return resource.ErrBadUUID
 		}
 
-		return rc.Promotions.Permit(act).Update(uuid, req)
+		return rc.Promotions.Update(ctx, uuid, req)
 	}, w, r)
 }
 
 func (rc *Resource) Delete(w http.ResponseWriter, r *http.Request) {
-	resource.DeleteHandler(rc.Ident, func(act auth.Actor) error {
+	resource.DeleteHandler(r.Context(), func(ctx context.Context) error {
 		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
 			return resource.ErrBadUUID
 		}
 
-		return rc.Promotions.Permit(act).Delete(uuid)
+		return rc.Promotions.Delete(ctx, uuid)
 	}, w, r)
-}
-
-func transform(e *promotion.Entity) promotion.Result {
-	return promotion.Result(*e)
-}
-
-func transpose(r *promotion.Result, e *promotion.Entity) {
-	*r = promotion.Result(*e)
 }
