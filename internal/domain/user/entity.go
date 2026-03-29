@@ -1,16 +1,11 @@
 package user
 
 import (
-	"errors"
 	"regexp"
 	"slices"
 	"unicode/utf8"
 
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
-	"github.com/alan-b-lima/almodon/internal/support/entity"
-	"github.com/alan-b-lima/almodon/pkg/uuid"
-
-	"github.com/alan-b-lima/pkg/problem"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -21,51 +16,11 @@ const (
 )
 
 var (
-	re_siape  = regexp.MustCompile(`^\d{7}$`)
+	re_siape = regexp.MustCompile(`^\d{7}$`)
 	re_email = regexp.MustCompile(`^[0-9A-Za-z_%+-]+(\.[0-9A-Za-z_%+-]+)*@[0-9A-Za-z-]+(\.[0-9A-Za-zA-Z-]+)*\.[A-Za-z]{2,}$`)
 
 	accept_roles = [...]auth.Role{auth.User, auth.Admin, auth.Chief, auth.Maintainer}
 )
-
-type User struct {
-	UUID     uuid.UUID
-	SIAPE    string
-	Name     string
-	Email    string
-	Password []byte
-	Role     auth.Role
-}
-
-func New(siape, name, email, password string, role auth.Role) (User, error) {
-	var u User
-
-	errpwd := entity.Set(&u.Password, password, ProcessPassword)
-	if err, ok := errors.AsType[*problem.Error](errpwd); ok && err.IsInternal() {
-		return User{}, err
-	}
-
-	err := problem.Join(
-		entity.Set(&u.SIAPE, siape, ProcessSIAPE),
-		entity.Set(&u.Name, name, ProcessName),
-		entity.Set(&u.Email, email, ProcessEmail),
-		errpwd,
-		entity.Set(&u.Role, role, ProcessRole),
-	)
-	if err != nil {
-		return User{}, ErrCreate.Cause(err).Make()
-	}
-
-	u.UUID = uuid.NewUUIDv7()
-	return u, nil
-}
-
-func ComparePassword(hash []byte, password string) error {
-	if bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil {
-		return nil
-	}
-
-	return ErrPasswordIncorrect
-}
 
 func ProcessSIAPE(siape string) (string, error) {
 	if !re_siape.MatchString(siape) {
@@ -122,6 +77,14 @@ func ProcessPassword(password string) ([]byte, error) {
 	}
 
 	return hash, nil
+}
+
+func ComparePassword(hash []byte, password string) error {
+	if bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil {
+		return nil
+	}
+
+	return ErrPasswordIncorrect
 }
 
 func ProcessRole(role auth.Role) (auth.Role, error) {
