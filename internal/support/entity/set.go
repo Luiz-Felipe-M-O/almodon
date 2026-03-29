@@ -12,13 +12,13 @@ func Set[D, S any](dst *D, src S, proc func(S) (D, error)) error {
 	return nil
 }
 
-func SomeThen[F, R any](dst *opt.Opt[R], src opt.Opt[F], fn func(F) (R, error)) error {
+func SetOpt[F, R any](dst *opt.Opt[R], src opt.Opt[F], proc func(F) (R, error)) error {
 	val, ok := src.Unwrap()
 	if !ok {
 		return nil
 	}
 
-	res, err := fn(val)
+	res, err := proc(val)
 	if err != nil {
 		return err
 	}
