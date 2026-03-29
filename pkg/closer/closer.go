@@ -16,6 +16,10 @@ func (f CloserFunc) Close() error { return f() }
 
 // Bundle is a struct that manages a collection of Closers and provides methods
 // to add, reset, and close them.
+//
+// Bundle is NOT safe for concurrent use. It is the caller's responsibility to
+// ensure that access to the Bundle is properly synchronized across multiple
+// goroutines.
 type Bundle struct {
 	cleanup []Closer
 }
@@ -52,16 +56,28 @@ func (b *Bundle) Reset() {
 
 // Close calls the Close method on all Closers in the Bundle and returns any
 // errors that occur.
-// 
+//
 // The bundle will conclude all closers even if some of them return an error.
 // The errors will be collected and returned as a single error using
 // [errors.Join].
+//
+// All [Closer]s that have been successfully closed will be removed from the
+// Bundle, while those that returned an error will remain in the Bundle.
 func (b *Bundle) Close() error {
 	errs := make([]error, 0, len(b.cleanup))
 
+	var i int
 	for _, closer := range b.cleanup {
-		errs = append(errs, closer.Close())
+		if err := closer.Close(); err != nil {
+			errs = append(errs, err)
+		} else {
+			b.cleanup[i] = closer
+			i++
+		}
 	}
+
+	clear(b.cleanup[i:])
+	b.cleanup = b.cleanup[:i]
 
 	return errors.Join(errs...)
 }
