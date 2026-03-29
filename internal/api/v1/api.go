@@ -1,83 +1,198 @@
 package api
 
 import (
-	"errors"
+	"context"
+	"database/sql"
 	"net/http"
 
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	auths "github.com/alan-b-lima/almodon/internal/domain/auth/resource"
 	authserve "github.com/alan-b-lima/almodon/internal/domain/auth/service"
 
-	promotionrepo "github.com/alan-b-lima/almodon/internal/domain/promotion/repository"
+	"github.com/alan-b-lima/almodon/internal/domain/promotion"
 	promotions "github.com/alan-b-lima/almodon/internal/domain/promotion/resource"
 	promotionserve "github.com/alan-b-lima/almodon/internal/domain/promotion/service"
+	promotionstore "github.com/alan-b-lima/almodon/internal/domain/promotion/store"
 
-	sessionrepo "github.com/alan-b-lima/almodon/internal/domain/session/repository"
+	"github.com/alan-b-lima/almodon/internal/domain/session"
 	sessionserve "github.com/alan-b-lima/almodon/internal/domain/session/service"
+	sessionstore "github.com/alan-b-lima/almodon/internal/domain/session/store"
 
-	userrepo "github.com/alan-b-lima/almodon/internal/domain/user/repository"
+	"github.com/alan-b-lima/almodon/internal/domain/user"
 	users "github.com/alan-b-lima/almodon/internal/domain/user/resource"
 	userserve "github.com/alan-b-lima/almodon/internal/domain/user/service"
+	userstore "github.com/alan-b-lima/almodon/internal/domain/user/store"
+
+	"github.com/alan-b-lima/almodon/internal/support/store"
 
 	"github.com/alan-b-lima/almodon/pkg/closer"
+
+	_ "modernc.org/sqlite"
 )
 
-type Handler struct {
+type Almodon struct {
 	http.ServeMux
+
 	cleanup closer.Bundle
 }
 
-func New() (*Handler, error) {
-	var h Handler
+type (
+	Stores struct {
+		Promotions promotion.Store
+		Sessions   session.Store
+		Users      user.Store
+	}
 
-	var (
-		RepoPromotions          = promotionrepo.NewMap()
-		RepoSessions            = sessionrepo.NewMap()
-		RepoUsers, errRepoUsers = userrepo.NewPersistantMap("../.data/users.json")
-	)
-	err := errors.Join(errRepoUsers)
+	Services struct {
+		Auths      auth.Service
+		Promotions promotion.Service
+		Sessions   session.Service
+		Users      user.Service
+	}
+
+	Resources struct {
+		Auth       *auths.Resource
+		Promotions *promotions.Resource
+		Users      *users.Resource
+	}
+)
+
+func New() (*Almodon, error) {
+	var a Almodon
+	var err error
+
+	defer func() {
+		if err != nil {
+			a.Close()
+		}
+	}()
+
+	db, err := a.NewSQLiteDB()
 	if err != nil {
-		closer.CloseMany(RepoPromotions, RepoSessions, RepoUsers)
 		return nil, err
 	}
 
-	var (
-		CoreSessions   = &sessionserve.Core{RepoSessions}
-		CoreUsers      = &userserve.Core{RepoUsers}
-		CorePromotions = &promotionserve.Core{RepoPromotions, CoreUsers}
-		CoreAuth       = &authserve.Core{CoreUsers, CoreSessions, CorePromotions}
-	)
+	stores := a.NewSQLiteStores(db)
+	services := a.NewServices(stores)
+	resources := a.NewResources(services)
 
-	var (
-		ServicePromotions = promotionserve.New(CorePromotions)
-		ServiceUsers      = userserve.New(CoreUsers)
-	)
-
-	var (
-		auth       = auths.New(CoreAuth)
-		promotions = promotions.New(ServicePromotions, CoreAuth)
-		users      = users.New(ServiceUsers, CoreAuth)
-	)
-
-	resources := map[string]http.Handler{
-		"auth":       auth,
-		"promotions": promotions,
-		"users":      users,
+	handlers := map[string]http.Handler{
+		"auth":       resources.Auth,
+		"promotions": resources.Promotions,
+		"users":      resources.Users,
+	}
+	for name, handler := range handlers {
+		a.Handle("/api/v1/"+name+"/", http.StripPrefix("/api/v1", handler))
 	}
 
-	for name, handler := range resources {
-		h.Handle("/api/v1/"+name+"/", http.StripPrefix("/api/v1", handler))
-	}
-
-	h.cleanup.BundleMany(
-		RepoPromotions, RepoSessions, RepoUsers,
-		CorePromotions, CoreSessions, CoreUsers, CoreAuth,
-		ServicePromotions, ServiceUsers,
-		auth, promotions, users,
-	)
-
-	return &h, nil
+	return &a, nil
 }
 
-func (h *Handler) Close() error {
-	return h.cleanup.Close()
+func (a *Almodon) NewSQLiteDB() (*sql.DB, error) {
+	db, err := sql.Open("sqlite", "../.data/almodon.db")
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+
+	db.SetMaxIdleConns(1)
+	db.SetMaxOpenConns(1)
+
+	ctx := context.TODO()
+	err = store.WithTx(ctx, db, func(tx store.DBTx) error {
+		operations := [...]string{
+			userstore.Table,
+			sessionstore.Table,
+			promotionstore.Table,
+
+			userstore.Indexes,
+			sessionstore.Indexes,
+			promotionstore.Indexes,
+
+			userstore.Views,
+		}
+
+		for _, op := range operations {
+			if _, err := tx.ExecContext(ctx, op); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	a.cleanup.Bundle(db)
+	return db, nil
+}
+
+func (a *Almodon) NewSQLiteStores(db *sql.DB) Stores {
+	stores := Stores{
+		Promotions: promotionstore.New(db),
+		Sessions:   sessionstore.New(db),
+		Users:      userstore.New(db),
+	}
+
+	a.cleanup.BundleMany(
+		stores.Promotions,
+		stores.Sessions,
+		stores.Users,
+	)
+
+	return stores
+}
+
+func (a *Almodon) NewServices(stores Stores) Services {
+	var (
+		sessions   = &sessionserve.Core{stores.Sessions}
+		users      = &userserve.Core{stores.Users}
+		promotions = &promotionserve.Core{stores.Promotions, users}
+		auths      = &authserve.Core{users, sessions}
+	)
+
+	services := Services{
+		Auths:      auths,
+		Promotions: promotionserve.New(promotions, auths),
+		Sessions:   sessions,
+		Users:      userserve.New(users, auths),
+	}
+
+	a.cleanup.BundleMany(
+		auths,
+		promotions,
+		sessions,
+		users,
+		services.Auths,
+		services.Promotions,
+		services.Sessions,
+		services.Users,
+	)
+
+	return services
+}
+
+func (a *Almodon) NewResources(services Services) Resources {
+	resources := Resources{
+		Auth:       auths.New(services.Auths),
+		Promotions: promotions.New(services.Promotions),
+		Users:      users.New(services.Users),
+	}
+
+	a.cleanup.BundleMany(
+		resources.Auth,
+		resources.Promotions,
+		resources.Users,
+	)
+
+	return resources
+}
+
+func (a *Almodon) Close() error {
+	return a.cleanup.Close()
 }
