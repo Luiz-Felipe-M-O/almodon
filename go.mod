@@ -4,8 +4,7 @@ go 1.26.0
 
 require (
 	github.com/alan-b-lima/ansi-escape-sequences v1.1.0
-	github.com/alan-b-lima/pkg v0.1.0
-	github.com/mattn/go-sqlite3 v1.14.37
+	github.com/alan-b-lima/pkg v0.2.0
 	golang.org/x/crypto v0.49.0
 	modernc.org/sqlite v1.48.0
 )

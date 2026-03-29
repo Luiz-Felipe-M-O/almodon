@@ -27,6 +27,9 @@ import (
 
 	"github.com/alan-b-lima/almodon/pkg/closer"
 
+	"github.com/alan-b-lima/pkg/problem"
+	"github.com/alan-b-lima/pkg/scheduler"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -73,7 +76,12 @@ func New() (*Almodon, error) {
 	}
 
 	stores := a.NewSQLiteStores(db)
-	services := a.NewServices(stores)
+
+	services, err := a.NewServices(stores)
+	if err != nil {
+		return nil, err
+	}
+
 	resources := a.NewResources(services)
 
 	handlers := map[string]http.Handler{
@@ -93,13 +101,11 @@ func (a *Almodon) NewSQLiteDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	a.cleanup.Bundle(db)
 
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
-
-	db.SetMaxIdleConns(1)
-	db.SetMaxOpenConns(1)
 
 	ctx := context.TODO()
 	err = store.WithTx(ctx, db, func(tx store.DBTx) error {
@@ -124,11 +130,9 @@ func (a *Almodon) NewSQLiteDB() (*sql.DB, error) {
 		return nil
 	})
 	if err != nil {
-		db.Close()
 		return nil, err
 	}
 
-	a.cleanup.Bundle(db)
 	return db, nil
 }
 
@@ -148,33 +152,38 @@ func (a *Almodon) NewSQLiteStores(db *sql.DB) Stores {
 	return stores
 }
 
-func (a *Almodon) NewServices(stores Stores) Services {
+func (a *Almodon) NewServices(stores Stores) (Services, error) {
+	scheduler := scheduler.New()
+	a.cleanup.BundleFunc(scheduler.Stop)
+	scheduler.Start()
+
 	var (
-		sessions   = &sessionserve.Core{stores.Sessions}
-		users      = &userserve.Core{stores.Users}
-		promotions = &promotionserve.Core{stores.Promotions, users}
-		auths      = &authserve.Core{users, sessions}
+		sessions, err_sessions     = sessionserve.New(stores.Sessions, scheduler)
+		users                      = userserve.New(stores.Users)
+		promotions, err_promotions = promotionserve.New(stores.Promotions, users, scheduler)
+		auths                      = authserve.New(users, sessions)
 	)
+	a.cleanup.BundleMany(auths, promotions, sessions, users)
+
+	err := problem.Join(err_sessions, err_promotions)
+	if err != nil {
+		return Services{}, err
+	}
 
 	services := Services{
 		Auths:      auths,
-		Promotions: promotionserve.New(promotions, auths),
+		Promotions: promotionserve.NewGate(promotions, auths),
 		Sessions:   sessions,
-		Users:      userserve.New(users, auths),
+		Users:      userserve.NewGate(users, auths),
 	}
-
 	a.cleanup.BundleMany(
-		auths,
-		promotions,
-		sessions,
-		users,
 		services.Auths,
 		services.Promotions,
 		services.Sessions,
 		services.Users,
 	)
 
-	return services
+	return services, nil
 }
 
 func (a *Almodon) NewResources(services Services) Resources {
