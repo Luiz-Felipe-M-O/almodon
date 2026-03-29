@@ -1,96 +1,93 @@
 package userserve
 
 import (
+	"context"
 	"time"
 
-	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
 	"github.com/alan-b-lima/almodon/internal/support"
 	"github.com/alan-b-lima/almodon/internal/support/entity"
-	"github.com/alan-b-lima/almodon/pkg/errors"
-	"github.com/alan-b-lima/almodon/pkg/opt"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+	"github.com/alan-b-lima/pkg/problem"
 )
 
 type Core struct {
-	Users user.Repository
+	Users user.Store
 }
 
-var _ user.Service = &Core{}
+var _ user.Service = (*Core)(nil)
 
-func (c *Core) List(req user.ListParams) (user.Entities, error) {
-	return c.Users.List(req.Offset, req.Limit)
+func (c *Core) List(ctx context.Context) ([]user.Result, error) {
+	recs, err := c.Users.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]user.Result, 0, len(recs))
+	for _, rec := range recs {
+		res = append(res, user.Result(rec))
+	}
+
+	return res, nil
 }
 
-func (c *Core) Get(uuid uuid.UUID) (user.Entity, error) {
-	return c.Users.Get(uuid)
+func (c *Core) Get(ctx context.Context, uuid uuid.UUID) (user.Result, error) {
+	rec, err := c.Users.Get(ctx, uuid)
+	if err != nil {
+		return user.Result{}, err
+	}
+
+	return user.Result(rec), nil
 }
 
-func (c *Core) GetBySIAPE(siape string) (user.Entity, error) {
-	return c.Users.GetBySIAPE(siape)
+func (c *Core) GetBySIAPE(ctx context.Context, siape string) (user.Result, error) {
+	rec, err := c.Users.GetBySIAPE(ctx, siape)
+	if err != nil {
+		return user.Result{}, err
+	}
+
+	return user.Result(rec), nil
 }
 
-func (c *Core) Create(req user.Create) (uuid.UUID, error) {
+func (c *Core) Me(ctx context.Context) (user.Result, error) {
+	return user.Result{}, support.ErrTODO
+}
+
+func (c *Core) Create(ctx context.Context, req user.Create) (user.CreateResult, error) {
 	u, err := user.New(req.SIAPE, req.Name, req.Email, req.Password, req.Role)
 	if err != nil {
-		return uuid.UUID{}, err
+		return user.CreateResult{}, err
 	}
 
-	ent := translate(&u)
+	rec := user.CreateRecord{
+		UUID:     u.UUID,
+		SIAPE:    u.SIAPE,
+		Name:     u.Name,
+		Email:    u.Email,
+		Password: u.Password,
+		Role:     u.Role,
+		Created:  time.Now(),
+		Updated:  time.Now(),
+	}
 
-	now := time.Now()
-	ent.Created = now
-	ent.Updated = now
-
-	return u.UUID(), c.Users.Create(ent)
+	return user.CreateResult{UUID: u.UUID}, c.Users.Create(ctx, rec)
 }
 
-func (c *Core) Patch(uuid uuid.UUID, req user.Patch) error {
-	var string opt.Opt[string]
-	var role opt.Opt[auth.Role]
-
-	return patch(c.Users, uuid, req.Name, req.Email, string, role)
-}
-
-func (c *Core) UpdatePassword(uuid uuid.UUID, req user.UpdatePassword) error {
-	return support.ErrTODO
-}
-
-func (c *Core) UpdateRole(uuid uuid.UUID, req user.UpdateRole) error {
-	var string opt.Opt[string]
-
-	return patch(c.Users, uuid, string, string, string, opt.Some(req.Role))
-}
-
-func (c *Core) Delete(uuid uuid.UUID) error {
-	return c.Users.Delete(uuid)
-}
-
-func patch(users user.Repository, uuid uuid.UUID, name, email, password opt.Opt[string], role opt.Opt[auth.Role]) error {
-	var u user.PartialEntity
-
-	err := errors.Join(
-		entity.SomeThen(&u.Name, name, user.ProcessName),
-		entity.SomeThen(&u.Email, email, user.ProcessEmail),
-		entity.SomeThen(&u.Password, password, user.ProcessPassword),
-		entity.SomeThen(&u.Role, role, user.ProcessRole),
+func (c *Core) Patch(ctx context.Context, uuid uuid.UUID, req user.Patch) error {
+	var rec user.PatchRecord
+	err := problem.Join(
+		entity.SetOpt(&rec.Name, req.Name, user.ProcessName),
+		entity.SetOpt(&rec.Email, req.Email, user.ProcessEmail),
 	)
 	if err != nil {
-		return user.ErrUserUpdate.Cause(err).Make()
+		return user.ErrUpdate.Cause(err).Make()
 	}
 
-	u.Updated = time.Now()
+	rec.Updated = time.Now()
 
-	return users.Patch(uuid, u)
+	return c.Users.Patch(ctx, uuid, rec)
 }
 
-func translate(e *user.User) user.Entity {
-	return user.Entity{
-		UUID:     e.UUID(),
-		SIAPE:    e.SIAPE(),
-		Name:     e.Name(),
-		Email:    e.Email(),
-		Password: e.Password(),
-		Role:     e.Role(),
-	}
+func (c *Core) Delete(ctx context.Context, uuid uuid.UUID) error {
+	return c.Users.Delete(ctx, uuid)
 }

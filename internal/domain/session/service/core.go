@@ -1,34 +1,39 @@
 package sessionserve
 
 import (
+	"context"
 	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/session"
+	"github.com/alan-b-lima/almodon/internal/support/entity"
+	"github.com/alan-b-lima/pkg/problem"
 
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
 type Core struct {
-	Sessions session.Repository
+	Sessions session.Store
 }
+
+var _ session.Service = (*Core)(nil)
 
 const _MaxAge = 1 * time.Hour
 
-func (c *Core) Get(uuid uuid.UUID) (session.Entity, error) {
-	res, err := c.Sessions.Get(uuid)
+func (c *Core) Get(ctx context.Context, uuid uuid.UUID) (session.Result, error) {
+	res, err := c.Sessions.Get(ctx, uuid)
 	if err != nil {
-		return session.Entity{}, err
+		return session.Result{}, err
 	}
 
 	if time.Now().After(res.Expires) {
-		return session.Entity{}, session.ErrSessionNotFound
+		return session.Result{}, session.ErrNotFound
 	}
 
-	return res, nil
+	return session.Result(res), nil
 }
 
 // TODO: verify validity of [_MaxAge] and turn it to an internal error
-func (c *Core) CreateAndGet(req session.Create) (session.Entity, error) {
+func (c *Core) CreateAndGet(ctx context.Context, req session.Create) (session.Result, error) {
 	maxAge := _MaxAge
 	if v, ok := req.MaxAge.Unwrap(); ok {
 		maxAge = v
@@ -36,31 +41,48 @@ func (c *Core) CreateAndGet(req session.Create) (session.Entity, error) {
 
 	s, err := session.New(req.User, maxAge)
 	if err != nil {
-		return session.Entity{}, err
+		return session.Result{}, err
 	}
 
-	session := session.Entity{
-		UUID:    s.UUID(),
-		User:    s.User(),
-		Expires: s.Expires(),
+	ss := session.CreateRecord{
+		UUID:    s.UUID,
+		User:    s.User,
+		Renewed: s.Renewed,
+		Expires: s.Expires,
+		Created: time.Now(),
 	}
 
-	return session, c.Sessions.Create(session)
+	return session.Result(ss), c.Sessions.Create(ctx, ss)
 }
 
 // TODO: verify validity of _MaxAge and turn it to an internal error
-func (c *Core) Update(uuid uuid.UUID, req session.Update) error {
-	maxAge := _MaxAge
+func (c *Core) Update(ctx context.Context, uuid uuid.UUID, req session.Update) error {
+	max_age := _MaxAge
 	if v, ok := req.MaxAge.Unwrap(); ok {
-		maxAge = v
+		max_age = v
 	}
 
-	var s session.Session
-	s.SetMaxAge(maxAge)
+	err := c.Sessions.RunTx(ctx, func(store session.Store) error {
+		s, err := store.Get(ctx, uuid)
+		if err != nil {
+			return err
+		}
 
-	return c.Sessions.Update(uuid, s.Expires())
+		var rec session.UpdateRecord
+		err = problem.Join(
+			entity.Set(&rec.Renewed, s.Renewed, session.ProcessRenewed),
+			entity.Set(&rec.Expires, max_age, session.ProcessMaxAge),
+		)
+		if err != nil {
+			return session.ErrUpdate.Cause(err).Make()
+		}
+
+		return c.Sessions.Update(ctx, uuid, rec)
+	})
+
+	return err
 }
 
-func (c *Core) Delete(uuid uuid.UUID) error {
-	return c.Sessions.Delete(uuid)
+func (c *Core) Delete(ctx context.Context, uuid uuid.UUID) error {
+	return c.Sessions.Delete(ctx, uuid)
 }

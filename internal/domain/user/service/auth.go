@@ -1,6 +1,8 @@
 package userserve
 
 import (
+	"context"
+
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
 	"github.com/alan-b-lima/almodon/internal/support/service"
@@ -9,112 +11,105 @@ import (
 
 type Gate struct {
 	user.Service
-	actor auth.Actor
+	Gate auth.Authenticator
 }
 
-func New(service user.Service) user.Service {
-	return &Gate{Service: service}
-}
-
-var permChief = auth.Allow(auth.Chief)
-
-func (s *Gate) Allow(act auth.Actor) user.Service {
+func New(service user.Service, gate auth.Authenticator) user.Service {
 	return &Gate{
-		Service: s.Service,
-		actor:   act,
+		Service: service,
+		Gate:    gate,
 	}
 }
 
-func (s *Gate) List(req user.ListParams) (user.Entities, error) {
-	if err := service.Authorize(permChief, s.actor); err != nil {
-		return user.Entities{}, err
+var (
+	perm_chief = auth.Allow(auth.Chief)
+	perm_user  = auth.Allow(auth.User)
+)
+
+func (c *Gate) List(ctx context.Context) ([]user.Result, error) {
+	_, err := service.AuthorizeFromContext(ctx, c.Gate, perm_chief)
+	if err != nil {
+		return []user.Result{}, err
 	}
 
-	return s.Service.List(req)
+	return c.Service.List(ctx)
 }
 
-func (s *Gate) Get(uuid uuid.UUID) (user.Entity, error) {
-	if s.actor.User() == uuid {
-		goto Do
-	}
+func (c *Gate) Get(ctx context.Context, uuid uuid.UUID) (user.Result, error) {
+	actor, err := service.AuthorizeFromContext(ctx, c.Gate, perm_chief)
+	if err != nil {
+		if actor.User == uuid {
+			goto Do
+		}
 
-	if err := service.Authorize(permChief, s.actor); err != nil {
-		return user.Entity{}, err
+		return user.Result{}, err
 	}
 
 Do:
-	return s.Service.Get(uuid)
+	return c.Service.Get(ctx, uuid)
 }
 
-func (s *Gate) GetBySIAPE(siape string) (user.Entity, error) {
-	res, err := s.Service.GetBySIAPE(siape)
+func (c *Gate) GetBySIAPE(ctx context.Context, siape string) (user.Result, error) {
+	res, err := c.Service.GetBySIAPE(ctx, siape)
 	if err != nil {
-		return user.Entity{}, err
+		return user.Result{}, err
 	}
 
-	if s.actor.User() == res.UUID {
-		goto Do
-	}
+	actor, err := service.AuthorizeFromContext(ctx, c.Gate, perm_chief)
+	if err != nil {
+		if actor.User == res.UUID {
+			goto Do
+		}
 
-	if err := service.Authorize(permChief, s.actor); err != nil {
-		return user.Entity{}, err
+		return user.Result{}, err
 	}
 
 Do:
 	return res, nil
 }
 
-func (s *Gate) Create(req user.Create) (uuid.UUID, error) {
-	if err := service.Authorize(permChief, s.actor); err != nil {
-		return uuid.UUID{}, err
+func (c *Gate) Me(ctx context.Context) (user.Result, error) {
+	actor, err := service.AuthorizeFromContext(ctx, c.Gate, perm_user)
+	if err != nil {
+		return user.Result{}, err
 	}
 
-	return s.Service.Create(req)
+	return c.Service.Get(ctx, actor.User)
 }
 
-func (s *Gate) Patch(uuid uuid.UUID, req user.Patch) error {
-	if s.actor.User() == uuid {
-		goto Do
+func (c *Gate) Create(ctx context.Context, req user.Create) (user.CreateResult, error) {
+	_, err := service.AuthorizeFromContext(ctx, c.Gate, perm_chief)
+	if err != nil {
+		return user.CreateResult{}, err
 	}
 
-	if err := service.Authorize(permChief, s.actor); err != nil {
+	return c.Service.Create(ctx, req)
+}
+
+func (c *Gate) Patch(ctx context.Context, uuid uuid.UUID, req user.Patch) error {
+	actor, err := service.AuthorizeFromContext(ctx, c.Gate, perm_chief)
+	if err != nil {
+		if actor.User == uuid {
+			goto Do
+		}
+
 		return err
 	}
 
 Do:
-	return s.Service.Patch(uuid, req)
+	return c.Service.Patch(ctx, uuid, req)
 }
 
-func (s *Gate) UpdatePassword(uuid uuid.UUID, req user.UpdatePassword) error {
-	if s.actor.User() == uuid {
-		goto Do
-	}
+func (c *Gate) Delete(ctx context.Context, uuid uuid.UUID) error {
+	actor, err := service.AuthorizeFromContext(ctx, c.Gate, perm_chief)
+	if err != nil {
+		if actor.User == uuid {
+			goto Do
+		}
 
-	if err := service.Authorize(permChief, s.actor); err != nil {
 		return err
 	}
 
 Do:
-	return s.Service.UpdatePassword(uuid, req)
-}
-
-func (s *Gate) UpdateRole(uuid uuid.UUID, req user.UpdateRole) error {
-	if err := service.Authorize(permChief, s.actor); err != nil {
-		return err
-	}
-
-	return s.Service.UpdateRole(uuid, req)
-}
-
-func (s *Gate) Delete(uuid uuid.UUID) error {
-	if s.actor.User() == uuid {
-		goto Do
-	}
-
-	if err := service.Authorize(permChief, s.actor); err != nil {
-		return err
-	}
-
-Do:
-	return s.Service.Delete(uuid)
+	return c.Service.Delete(ctx, uuid)
 }
