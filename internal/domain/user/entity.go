@@ -1,80 +1,77 @@
 package user
 
 import (
+	"errors"
 	"regexp"
 	"slices"
 	"unicode/utf8"
 
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
-	"github.com/alan-b-lima/almodon/pkg/errors"
-	hashpkg "github.com/alan-b-lima/almodon/pkg/hash"
+	"github.com/alan-b-lima/almodon/internal/support/entity"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+
+	"github.com/alan-b-lima/pkg/problem"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	PasswordMinLen = 64
+	PasswordMinLen = 8
 	PasswordMaxLen = 64
 )
 
 var (
-	reEmail     = regexp.MustCompile(`^[0-9A-Za-z_%+-]+(\.[0-9A-Za-z_%+-]+)*@[0-9A-Za-z-]+(\.[0-9A-Za-zA-Z-]+)*\.[A-Za-z]{2,}$`)
-	acceptRoles = [...]auth.Role{auth.User, auth.Admin, auth.Chief}
+	re_siape  = regexp.MustCompile(`^\d{7}$`)
+	re_email = regexp.MustCompile(`^[0-9A-Za-z_%+-]+(\.[0-9A-Za-z_%+-]+)*@[0-9A-Za-z-]+(\.[0-9A-Za-zA-Z-]+)*\.[A-Za-z]{2,}$`)
+
+	accept_roles = [...]auth.Role{auth.User, auth.Admin, auth.Chief, auth.Maintainer}
 )
 
 type User struct {
-	uuid     uuid.UUID
-	siape    string
-	name     string
-	email    string
-	password [60]byte
-	role     auth.Role
+	UUID     uuid.UUID
+	SIAPE    string
+	Name     string
+	Email    string
+	Password []byte
+	Role     auth.Role
 }
 
 func New(siape, name, email, password string, role auth.Role) (User, error) {
 	var u User
 
-	errpwd := u.SetPassword(password)
-	if err, ok := errors.AsType[*errors.Error](errpwd); ok && err.IsInternal() {
+	errpwd := entity.Set(&u.Password, password, ProcessPassword)
+	if err, ok := errors.AsType[*problem.Error](errpwd); ok && err.IsInternal() {
 		return User{}, err
 	}
 
-	err := errors.Join(
-		u.SetSIAPE(siape),
-		u.SetName(name),
-		u.SetEmail(email),
+	err := problem.Join(
+		entity.Set(&u.SIAPE, siape, ProcessSIAPE),
+		entity.Set(&u.Name, name, ProcessName),
+		entity.Set(&u.Email, email, ProcessEmail),
 		errpwd,
-		u.SetRole(role),
+		entity.Set(&u.Role, role, ProcessRole),
 	)
 	if err != nil {
-		return User{}, ErrUserCreate.Cause(err).Make()
+		return User{}, ErrCreate.Cause(err).Make()
 	}
 
-	u.uuid = uuid.NewUUIDv7()
+	u.UUID = uuid.NewUUIDv7()
 	return u, nil
 }
 
-func (u *User) UUID() uuid.UUID    { return u.uuid }
-func (u *User) SIAPE() string      { return u.siape }
-func (u *User) Name() string       { return u.name }
-func (u *User) Email() string      { return u.email }
-func (u *User) Password() [60]byte { return u.password }
-func (u *User) Role() auth.Role    { return u.role }
-
-func (u *User) SetSIAPE(siape string) error       { return set(&u.siape, siape, ProcessSiape) }
-func (u *User) SetName(name string) error         { return set(&u.name, name, ProcessName) }
-func (u *User) SetEmail(email string) error       { return set(&u.email, email, ProcessEmail) }
-func (u *User) SetPassword(password string) error { return set(&u.password, password, ProcessPassword) }
-func (u *User) SetRole(role auth.Role) error      { return set(&u.role, role, ProcessRole) }
-
-func ComparePassword(hash, password []byte) error {
-	if hashpkg.Compare(hash, password) {
+func ComparePassword(hash []byte, password string) error {
+	if bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil {
 		return nil
 	}
 
 	return ErrPasswordIncorrect
 }
 
-func ProcessSiape(siape string) (string, error) {
+func ProcessSIAPE(siape string) (string, error) {
+	if !re_siape.MatchString(siape) {
+		return "", ErrSiapeInvalid
+	}
+
 	return siape, nil
 }
 
@@ -87,60 +84,50 @@ func ProcessName(name string) (string, error) {
 }
 
 func ProcessEmail(email string) (string, error) {
-	if !reEmail.MatchString(email) {
+	if !re_email.MatchString(email) {
 		return "", ErrEmailInvalid
 	}
 
 	return email, nil
 }
 
-func ProcessPassword(password string) ([60]byte, error) {
+func ProcessPassword(password string) ([]byte, error) {
 	if len(password) < PasswordMinLen {
-		return [60]byte{}, ErrPasswordTooShort
+		return nil, ErrPasswordTooShort
 	}
 
 	if len(password) > PasswordMaxLen {
-		return [60]byte{}, ErrPasswordTooLong
+		return nil, ErrPasswordTooLong
 	}
 
 	switch password[0] {
 	case ' ', '\t', '\n', '\r':
-		return [60]byte{}, ErrPasswordLeadOrTrailWhitespace
+		return nil, ErrPasswordLeadOrTrailWhitespace
 	}
 
 	switch password[len(password)-1] {
 	case ' ', '\t', '\n', '\r':
-		return [60]byte{}, ErrPasswordLeadOrTrailWhitespace
+		return nil, ErrPasswordLeadOrTrailWhitespace
 	}
 
 	for _, rune := range password {
 		if rune < ' ' || !utf8.ValidRune(rune) {
-			return [60]byte{}, ErrPasswordIllegalCharacters
+			return nil, ErrPasswordIllegalCharacters
 		}
 	}
 
-	hash, err := hashpkg.Hash([]byte(password))
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return [60]byte{}, ErrPasswordFailedToHash.Cause(err).Make()
+		return nil, ErrPasswordFailedToHash.Cause(err).Make()
 	}
 
 	return hash, nil
 }
 
 func ProcessRole(role auth.Role) (auth.Role, error) {
-	if !slices.Contains(acceptRoles[:], role) {
+	if !slices.Contains(accept_roles[:], role) {
 		return 0, ErrRoleInvalid
 	}
 
 	return role, nil
-}
-
-func set[D, S any](dst *D, src S, proc func(S) (D, error)) error {
-	val, err := proc(src)
-	if err != nil {
-		return err
-	}
-
-	*dst = val
-	return nil
 }

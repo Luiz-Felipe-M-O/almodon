@@ -1,38 +1,57 @@
 package user
 
 import (
+	"context"
+	"time"
+
+	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+	"github.com/alan-b-lima/pkg/opt"
 )
 
 type Service interface {
-	Lister
-	Getter
-	Creater
-	Updater
-	Deleter
+	List(context.Context) ([]Result, error)
+
+	Get(context.Context, uuid.UUID) (Result, error)
+	GetBySIAPE(context.Context, string) (Result, error)
+	Me(context.Context) (Result, error)
+
+	Create(context.Context, Create) (CreateResult, error)
+
+	Patch(context.Context, uuid.UUID, Patch) error
+
+	Delete(context.Context, uuid.UUID) error
 }
 
 type (
-	Lister interface {
-		List(req ListParams) (Entities, error)
+	Create struct {
+		SIAPE    string    `json:"siape"`
+		Name     string    `json:"name"`
+		Email    string    `json:"email"`
+		Password string    `json:"password"`
+		Role     auth.Role `json:"role"`
 	}
 
-	Getter interface {
-		Get(uuid uuid.UUID) (Entity, error)
-		GetBySIAPE(siape string) (Entity, error)
+	Patch struct {
+		Name  opt.Opt[string] `json:"name"`
+		Email opt.Opt[string] `json:"email"`
+	}
+)
+
+type (
+	Result struct {
+		UUID     uuid.UUID `json:"uuid"`
+		SIAPE    string    `json:"siape"`
+		Name     string    `json:"name"`
+		Email    string    `json:"email"`
+		Password []byte    `json:"password"`
+		Role     auth.Role `json:"role"`
+		Logged   bool      `json:"logged"`
+		Created  time.Time `json:"created"`
+		Updated  time.Time `json:"updated"`
 	}
 
-	Creater interface {
-		Create(req Create) (uuid.UUID, error)
-	}
-
-	Updater interface {
-		Patch(uuid uuid.UUID, req Patch) error
-		UpdatePassword(uuid uuid.UUID, req UpdatePassword) error
-		UpdateRole(uuid uuid.UUID, req UpdateRole) error
-	}
-
-	Deleter interface {
-		Delete(uuid uuid.UUID) error
+	CreateResult struct {
+		UUID uuid.UUID `json:"uuid"`
 	}
 )
