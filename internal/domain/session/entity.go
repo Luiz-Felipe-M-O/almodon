@@ -1,49 +1,55 @@
 package session
 
 import (
+	"math"
 	"time"
 
-	"github.com/alan-b-lima/almodon/pkg/errors"
+	"github.com/alan-b-lima/almodon/internal/support/entity"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+	"github.com/alan-b-lima/pkg/problem"
 )
 
-const MaxAgeMax = 7 * 24 * time.Hour
+const MaxRenews = math.MaxInt
+const MaxAgeMax = 3 * 24 * time.Hour
 
 type Session struct {
-	uuid    uuid.UUID
-	user    uuid.UUID
-	expires time.Time
+	UUID    uuid.UUID
+	User    uuid.UUID
+	Renewed int
+	Expires time.Time
 }
 
-func New(user uuid.UUID, maxAge time.Duration) (Session, error) {
-	session := Session{}
+func New(user uuid.UUID, max_age time.Duration) (Session, error) {
+	session := Session{
+		User:    user,
+		Renewed: 0,
+	}
 
-	err := errors.Join(
-		session.setUser(user),
-		session.SetMaxAge(maxAge),
+	err := problem.Join(
+		entity.Set(&session.Expires, max_age, ProcessMaxAge),
 	)
 	if err != nil {
 		return Session{}, err
 	}
 
-	session.uuid = uuid.NewUUIDv7()
+	session.UUID = uuid.NewUUIDv7()
 	return session, nil
 }
 
-func (s *Session) UUID() uuid.UUID    { return s.uuid }
-func (s *Session) User() uuid.UUID    { return s.user }
-func (s *Session) Expires() time.Time { return s.expires }
-
-func (s *Session) setUser(uuid uuid.UUID) error {
-	s.user = uuid
-	return nil
-}
-
-func (s *Session) SetMaxAge(maxAge time.Duration) error {
-	if maxAge > MaxAgeMax {
-		return ErrSessionTooLong
+func ProcessRenewed(renewed int) (int, error) {
+	renewed = max(renewed+1, 0)
+	if renewed > MaxRenews {
+		return 0, ErrUnrenewable
 	}
 
-	s.expires = time.Now().Add(maxAge)
-	return nil
+	return renewed, nil
+}
+
+func ProcessMaxAge(max_age time.Duration) (time.Time, error) {
+	if max_age > MaxAgeMax {
+		return time.Time{}, ErrTooLong
+	}
+
+	expires := time.Now().Add(max_age)
+	return expires, nil
 }

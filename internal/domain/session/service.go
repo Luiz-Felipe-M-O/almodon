@@ -1,30 +1,40 @@
 package session
 
 import (
+	"context"
+	"time"
+
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+	"github.com/alan-b-lima/pkg/opt"
 )
 
 type Service interface {
-	Getter
-	Creater
-	Updater
-	Deleter
+	Get(context.Context, uuid.UUID) (Result, error)
+
+	CreateAndGet(context.Context, Create) (Result, error)
+
+	Update(context.Context, uuid.UUID, Update) error
+
+	Delete(context.Context, uuid.UUID) error
 }
 
 type (
-	Getter interface {
-		Get(uuid.UUID) (Entity, error)
+	Create struct {
+		User   uuid.UUID              `json:"user"`
+		MaxAge opt.Opt[time.Duration] `json:"max_age"`
 	}
 
-	Creater interface {
-		CreateAndGet(Create) (Entity, error)
+	Update struct {
+		MaxAge opt.Opt[time.Duration] `json:"max_age"`
 	}
+)
 
-	Updater interface {
-		Update(uuid.UUID, Update) error
-	}
-
-	Deleter interface {
-		Delete(uuid.UUID) error
+type (
+	Result struct {
+		UUID    uuid.UUID `json:"-"`
+		User    uuid.UUID `json:"user"`
+		Renewed int       `json:"renewed"`
+		Expires time.Time `json:"expires"`
+		Created time.Time `json:"created"`
 	}
 )
