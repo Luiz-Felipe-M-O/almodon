@@ -3,56 +3,40 @@ package promotion
 import (
 	"time"
 
-	"github.com/alan-b-lima/almodon/pkg/errors"
+	"github.com/alan-b-lima/almodon/internal/support/entity"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+
+	"github.com/alan-b-lima/pkg/problem"
 )
 
 const MaxAgeMax = 3 * 24 * time.Hour
 
 type Promotion struct {
-	uuid    uuid.UUID
-	user    uuid.UUID
-	expires time.Time
+	UUID    uuid.UUID
+	User    uuid.UUID
+	Expires time.Time
 }
 
-func New(user uuid.UUID, maxAge time.Duration) (Promotion, error) {
-	session := Promotion{}
+func New(user uuid.UUID, max_age time.Duration) (Promotion, error) {
+	session := Promotion{
+		User: user,
+	}
 
-	err := errors.Join(
-		session.setUser(user),
-		session.SetMaxAge(maxAge),
+	err := problem.Join(
+		entity.Set(&session.Expires, max_age, ProcessMaxAge),
 	)
 	if err != nil {
 		return Promotion{}, err
 	}
 
-	session.uuid = uuid.NewUUIDv7()
+	session.UUID = uuid.NewUUIDv7()
 	return session, nil
 }
 
-func (s *Promotion) UUID() uuid.UUID    { return s.uuid }
-func (s *Promotion) User() uuid.UUID    { return s.user }
-func (s *Promotion) Expires() time.Time { return s.expires }
-
-func (s *Promotion) setUser(uuid uuid.UUID) error {
-	s.user = uuid
-	return nil
-}
-
-func (s *Promotion) SetMaxAge(maxAge time.Duration) error {
-	val, err := ProcessMaxAge(maxAge)
-	if err != nil {
-		return err
+func ProcessMaxAge(max_age time.Duration) (time.Time, error) {
+	if max_age > MaxAgeMax {
+		return time.Time{}, ErrTooLong
 	}
 
-	s.expires = val
-	return nil
-}
-
-func ProcessMaxAge(maxAge time.Duration) (time.Time, error) {
-	if maxAge > MaxAgeMax {
-		return time.Time{}, ErrPromotionTooLong
-	}
-
-	return time.Now().Add(maxAge), nil
+	return time.Now().Add(max_age), nil
 }
