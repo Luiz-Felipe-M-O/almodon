@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	"unsafe"
 )
 
 // UUID represents a 128bit unique identifier. Elements of this type can, and
@@ -173,10 +172,7 @@ func next() (uint64, uint64) {
 	defer mu.Unlock()
 
 	if offset >= len(pool) {
-		pointer := unsafe.Pointer(unsafe.SliceData(pool[:]))
-		pool := unsafe.Slice((*byte)(pointer), 8*len(pool))
-
-		rand.Read(pool)
+		rand.Read(pool[:])
 		offset = 0
 	}
 
