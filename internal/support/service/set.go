@@ -1,4 +1,4 @@
-package entity
+package service
 
 import "github.com/alan-b-lima/pkg/opt"
 
