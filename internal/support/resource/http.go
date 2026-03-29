@@ -3,12 +3,13 @@ package resource
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"regexp"
 	"sync"
 
-	"github.com/alan-b-lima/almodon/pkg/errors"
+	"github.com/alan-b-lima/pkg/problem"
 )
 
 func WriteError(w http.ResponseWriter, err error) {
@@ -16,8 +17,8 @@ func WriteError(w http.ResponseWriter, err error) {
 		return
 	}
 
-	if err, ok := errors.AsType[*errors.Error](err); ok {
-		writeErrorJson(w, err, toHTTPStatus(err.Kind))
+	if err, ok := errors.AsType[*problem.Error](err); ok {
+		writeErrorJson(w, err, int(err.Kind))
 		return
 	}
 
@@ -34,29 +35,6 @@ func writeErrorJson(w http.ResponseWriter, err error, status int) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	w.Write(body)
-}
-
-var statusCodes = map[errors.Kind]int{
-	errors.InvalidInput:       http.StatusBadRequest,
-	errors.Unauthentic:        http.StatusUnauthorized,
-	errors.Forbidden:          http.StatusForbidden,
-	errors.PreconditionFailed: http.StatusPreconditionFailed,
-	errors.NotFound:           http.StatusNotFound,
-	errors.Conflict:           http.StatusConflict,
-	errors.Timeout:            http.StatusRequestTimeout,
-
-	errors.Internal:      http.StatusInternalServerError,
-	errors.Unimplemented: http.StatusNotImplemented,
-	errors.Unavailable:   http.StatusServiceUnavailable,
-	errors.BadGateway:    http.StatusBadGateway,
-}
-
-func toHTTPStatus(kind errors.Kind) int {
-	if status, in := statusCodes[kind]; in {
-		return status
-	}
-
-	return http.StatusInternalServerError
 }
 
 var (

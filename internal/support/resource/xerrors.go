@@ -1,16 +1,16 @@
 package resource
 
-import "github.com/alan-b-lima/almodon/pkg/errors"
+import "github.com/alan-b-lima/pkg/problem"
 
 var (
-	ErrBadUUID        = errors.New(errors.InvalidInput, "bad-uuid", "invalid uuid", nil, nil)
-	ErrBadQueryParams = errors.Imp(errors.InvalidInput, "bad-uuid").Message("invalid query params")
+	ErrBadUUID        = problem.New(problem.Malformed, "bad-uuid", "invalid uuid", nil, nil)
+	ErrBadQueryParams = problem.Imp(problem.Malformed, "bad-query-params").Message("invalid query params")
 
-	ErrNoContentType          = errors.New(errors.PreconditionFailed, "no-content-type", "content type must be informed", nil, nil)
-	ErrUnsupportedContentType = errors.Imp(errors.PreconditionFailed, "unsupported-content-type").Format("content type must be %s")
-	ErrNotAcceptableJson      = errors.Imp(errors.PreconditionFailed, "unacceptable-type").Format("client does not accept %s")
+	ErrNoContentType          = problem.New(problem.UnsupportedContentType, "no-content-type", "content type must be informed", nil, nil)
+	ErrUnsupportedContentType = problem.Imp(problem.UnsupportedContentType, "unsupported-content-type").Format("content type must be %s")
+	ErrNotAcceptable          = problem.Imp(problem.UnsupportedAcceptable, "unsupported-acceptable").Format("client does not accept %s")
 
-	ErrResourceNotFound = errors.Imp(errors.NotFound, "resource-not-found").Format("resource %+q not found")
-	ErrNotAcceptable    = errors.Imp(errors.PreconditionFailed, "not-acceptable").Format("client does not accept %s")
-	ErrJSON             = errors.Imp(errors.InvalidInput, "json-error").Message("unexpected error ocurred while processing")
+	ErrJSON = problem.Imp(problem.Malformed, "json-error").Message("unexpected error ocurred while processing json")
+
+	ErrResourceNotFound = problem.Imp(problem.NotFound, "resource-not-found").Format("resource %+q not found")
 )

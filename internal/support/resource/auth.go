@@ -1,37 +1,33 @@
 package resource
 
 import (
+	"context"
 	"net/http"
 	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
-	"github.com/alan-b-lima/almodon/pkg/errors"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
 const SessionCookieName = "session"
 
-func Session(rc auth.Identifier, r *http.Request) (auth.Actor, error) {
+func Session(ctx context.Context, r *http.Request) (context.Context, error) {
 	session, err := SessionCookie(r)
 	if err != nil {
-		return auth.NewUnlogged(), nil
+		if err == http.ErrNoCookie {
+			return ctx, nil
+		}
+
+		return nil, auth.ErrUnauthenticated.Cause(err).Make()
 	}
 
-	actor, err := rc.Actor(session)
-	if err, ok := errors.AsType[*errors.Error](err); ok && err.Kind.IsClient() {
-		return auth.NewUnlogged(), nil
-	}
-	if err != nil {
-		return auth.NewUnlogged(), err
-	}
-
-	return actor, err
+	return context.WithValue(ctx, "session", session), nil
 }
 
 func SessionCookie(r *http.Request) (uuid.UUID, error) {
 	s, err := r.Cookie(SessionCookieName)
 	if err != nil {
-		return uuid.UUID{}, auth.ErrUnauthenticated.Make()
+		return uuid.UUID{}, http.ErrNoCookie
 	}
 
 	session, err := uuid.FromString(s.Value)
