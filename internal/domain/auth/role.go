@@ -27,18 +27,8 @@ func Allow(classes ...Role) rbac.Permission[Role] {
 	return rbac.Allow(DefaultHierarchy, classes...)
 }
 
-func Authorize(perms rbac.Permission[Role], actor Actor) error {
-	if !perms.Authorize(actor.Role) {
-		return ErrUnauthorized.
-			Details(map[string]any{"allowed": perms}).
-			Make(actor.Role, perms)
-	}
-
-	return nil
-}
-
-// IsValid returns whether the role refers to an actual role, that
-// is, not unlogged an on the defined range.
+// IsValid returns whether the role refers to an actual role, that is, not
+// unlogged an on the defined range.
 func (l Role) IsValid() bool {
 	return l != Unlogged && l < invalid
 }
@@ -52,12 +42,12 @@ func (l Role) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + l.String() + `"`), nil
 }
 
-var ErrBadJSONString = errors.New("cannot unmarshal non-string into Go value of type auth.Role")
+var errBadJSONString = errors.New("cannot unmarshal non-string into Go value of type auth.Role")
 
 func (l *Role) UnmarshalJSON(data []byte) error {
 	str := string(data)
 	if len(str) < 2 || str[0] != '"' || str[len(str)-1] != '"' {
-		return ErrBadJSONString
+		return errBadJSONString
 	}
 
 	role, ok := FromString(str[1 : len(str)-1])
@@ -72,8 +62,8 @@ func (l *Role) UnmarshalJSON(data []byte) error {
 
 // DefaultHierarchy defines a partial ordering in the Role type.
 //
-// If [DefaultHierarchy](x, y) evaluates to true, then the
-// permissions of x are inherited by y.
+// If [DefaultHierarchy](x, y) evaluates to true, then the permissions of x are
+// inherited by y.
 func DefaultHierarchy(x, y Role) bool {
 	if !x.IsValid() || !y.IsValid() {
 		return false
@@ -90,9 +80,10 @@ func DefaultHierarchy(x, y Role) bool {
 	return x >= y
 }
 
-// FromString returns the Role corresponding to the given string. If
-// the string does not correspond to any Role, the second return
-// value is false.
+var errUnknownRole = errors.New("auth: unknown role")
+
+// FromString returns the Role corresponding to the given string. If the string
+// does not correspond to any Role, it returns false.
 func FromString(string string) (Role, bool) {
 	role, in := stringRoles[string]
 	if !in {

@@ -12,7 +12,7 @@ type Resource struct {
 	Auth auth.Service
 }
 
-func New(auth auth.Service) http.Handler {
+func New(auth auth.Service) *Resource {
 	rc := Resource{
 		Auth: auth,
 	}
