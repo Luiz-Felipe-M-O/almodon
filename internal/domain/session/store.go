@@ -15,6 +15,7 @@ type Store interface {
 	Update(context.Context, uuid.UUID, UpdateRecord) error
 
 	Delete(context.Context, uuid.UUID) error
+	DeleteExpired(context.Context, time.Time) error
 
 	RunTx(context.Context, func(Store) error) error
 }

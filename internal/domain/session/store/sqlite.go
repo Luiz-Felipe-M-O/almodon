@@ -3,6 +3,7 @@ package sessionstore
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/session"
 	"github.com/alan-b-lima/almodon/internal/support/service"
@@ -83,6 +84,15 @@ func (s *SQLDB) Delete(ctx context.Context, uuid uuid.UUID) error {
 	return nil
 }
 
+func (s *SQLDB) DeleteExpired(ctx context.Context, deadline time.Time) error {
+	_, err := s.db.ExecContext(ctx, delete_expired, deadline)
+	if err != nil {
+		return store.ErrExec.Cause(err).Make()
+	}
+
+	return nil
+}
+
 func (s *SQLDB) RunTx(ctx context.Context, proc func(session.Store) error) error {
 	return store.WithTx(ctx, s.db, func(tx store.DBTx) error {
 		return proc(New(tx))
@@ -108,8 +118,9 @@ func scan(ent *session.Record, scanner interface{ Scan(...any) error }) (bool, e
 }
 
 const (
-	get    = `select uuid, user, renewed, expires, created from sessions where uuid = ?`
-	create = `insert into sessions (uuid, user, renewed, expires, created) values (?, ?, ?, ?, ?)`
-	update = `update sessions set renewed = ?, expires = ? where uuid = ?`
-	delete = `delete from sessions where uuid = ?`
+	get            = `select uuid, user, renewed, expires, created from Sessions where uuid = ?`
+	create         = `insert into Sessions (uuid, user, renewed, expires, created) values (?, ?, ?, ?, ?)`
+	update         = `update Sessions set renewed = ?, expires = ? where uuid = ?`
+	delete         = `delete from Sessions where uuid = ?`
+	delete_expired = `delete from Sessions where expires < ?`
 )

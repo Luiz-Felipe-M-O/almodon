@@ -3,6 +3,7 @@ package promotionstore
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
 	entity "github.com/alan-b-lima/almodon/internal/support/service"
@@ -92,6 +93,15 @@ func (s *SQLDB) Delete(ctx context.Context, uuid uuid.UUID) error {
 	return nil
 }
 
+func (s *SQLDB) DeleteExpired(ctx context.Context, deadline time.Time) error {
+	_, err := s.db.ExecContext(ctx, delete_expired, deadline)
+	if err != nil {
+		return store.ErrExec.Cause(err).Make()
+	}
+
+	return nil
+}
+
 func (s *SQLDB) RunTx(ctx context.Context, proc func(promotion.Store) error) error {
 	err := store.WithTx(ctx, s.db, func(tx store.DBTx) error {
 		return proc(New(tx))
@@ -118,9 +128,10 @@ func scan(ent *promotion.Record, scanner interface{ Scan(...any) error }) error 
 }
 
 const (
-	get         = `select uuid, user, expires from Promotions where uuid = ?`
-	get_by_user = `select uuid, user, expires from Promotions where user = ?`
-	create      = `insert into Promotions (uuid, user, expires) values (?, ?, ?)`
-	update      = `update Promotions set expires = ? where uuid = ?`
-	delete      = `delete from Promotions where uuid = ?`
+	get            = `select uuid, user, expires from Promotions where uuid = ?`
+	get_by_user    = `select uuid, user, expires from Promotions where user = ?`
+	create         = `insert into Promotions (uuid, user, expires) values (?, ?, ?)`
+	update         = `update Promotions set expires = ? where uuid = ?`
+	delete         = `delete from Promotions where uuid = ?`
+	delete_expired = `delete from Promotions where expires < ?`
 )
