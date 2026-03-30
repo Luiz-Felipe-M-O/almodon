@@ -6,7 +6,7 @@ import (
 
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
-	"github.com/alan-b-lima/almodon/internal/support/entity"
+	"github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/internal/support/store"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 	"github.com/alan-b-lima/pkg/opt"
@@ -161,8 +161,8 @@ func scan(ent *user.Record, scanner interface{ Scan(...any) error }) (bool, erro
 	}
 
 	err := problem.Join(
-		entity.Set(&ent.UUID, bytes, uuid.FromBytes),
-		entity.Set(&ent.Role, string, role_from_string),
+		service.Set(&ent.UUID, bytes, uuid.FromBytes),
+		service.Set(&ent.Role, string, role_from_string),
 	)
 	if err != nil {
 		return true, store.ErrQuery.Cause(err).Make()

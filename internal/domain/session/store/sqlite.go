@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/alan-b-lima/almodon/internal/domain/session"
-	"github.com/alan-b-lima/almodon/internal/support/entity"
+	"github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/internal/support/store"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 	"github.com/alan-b-lima/pkg/problem"
@@ -97,8 +97,8 @@ func scan(ent *session.Record, scanner interface{ Scan(...any) error }) (bool, e
 	}
 
 	err := problem.Join(
-		entity.Set(&ent.UUID, bytes1, uuid.FromBytes),
-		entity.Set(&ent.User, bytes2, uuid.FromBytes),
+		service.Set(&ent.UUID, bytes1, uuid.FromBytes),
+		service.Set(&ent.User, bytes2, uuid.FromBytes),
 	)
 	if err != nil {
 		return true, err

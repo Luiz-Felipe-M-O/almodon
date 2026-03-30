@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
-	"github.com/alan-b-lima/almodon/internal/support/entity"
+	entity "github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/internal/support/store"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 	"github.com/alan-b-lima/pkg/problem"
