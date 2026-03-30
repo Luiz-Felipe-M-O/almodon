@@ -6,7 +6,7 @@ import (
 
 	"github.com/alan-b-lima/almodon/internal/domain/session"
 	"github.com/alan-b-lima/almodon/internal/support"
-	"github.com/alan-b-lima/almodon/internal/support/entity"
+	"github.com/alan-b-lima/almodon/internal/support/service"
 
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 
@@ -49,25 +49,27 @@ func (c *Core) Get(ctx context.Context, uuid uuid.UUID) (session.Result, error) 
 
 // TODO: verify validity of [_MaxAge] and turn it to an internal error
 func (c *Core) CreateAndGet(ctx context.Context, req session.Create) (session.Result, error) {
-	maxAge := _MaxAge
+	max_age := _MaxAge
 	if v, ok := req.MaxAge.Unwrap(); ok {
-		maxAge = v
+		max_age = v
 	}
 
-	s, err := session.New(req.User, maxAge)
+	var rec session.CreateRecord
+	err := problem.Join(
+		service.Set(&rec.Renewed, 0, session.ProcessRenewed),
+		service.Set(&rec.Expires, max_age, session.ProcessMaxAge),
+	)
 	if err != nil {
-		return session.Result{}, err
+		return session.Result{}, session.ErrCreate.Cause(err).Make()
 	}
 
-	ss := session.CreateRecord{
-		UUID:    s.UUID,
-		User:    s.User,
-		Renewed: s.Renewed,
-		Expires: s.Expires,
-		Created: time.Now(),
-	}
+	rec.User = req.User
+	rec.UUID = uuid.NewUUIDv7()
+	rec.Created = time.Now()
 
-	return session.Result(ss), c.Sessions.Create(ctx, ss)
+	c.flush_at(rec.Expires)
+
+	return session.Result(rec), c.Sessions.Create(ctx, rec)
 }
 
 // TODO: verify validity of _MaxAge and turn it to an internal error
@@ -86,8 +88,8 @@ func (c *Core) Update(ctx context.Context, uuid uuid.UUID, req session.Update) e
 
 		var rec session.UpdateRecord
 		err = problem.Join(
-			entity.Set(&rec.Renewed, s.Renewed, session.ProcessRenewed),
-			entity.Set(&rec.Expires, max_age, session.ProcessMaxAge),
+			service.Set(&rec.Renewed, s.Renewed, session.ProcessRenewed),
+			service.Set(&rec.Expires, max_age, session.ProcessMaxAge),
 		)
 		if err != nil {
 			return session.ErrUpdate.Cause(err).Make()
@@ -100,7 +102,7 @@ func (c *Core) Update(ctx context.Context, uuid uuid.UUID, req session.Update) e
 		return err
 	}
 
-	c.post(uuid, expires)
+	c.flush_at(expires)
 	return nil
 }
 
@@ -108,20 +110,8 @@ func (c *Core) Delete(ctx context.Context, uuid uuid.UUID) error {
 	return c.Sessions.Delete(ctx, uuid)
 }
 
-func (c *Core) post(uuid uuid.UUID, expires time.Time) {
+func (c *Core) flush_at(expires time.Time) {
 	c.Scheduler.Post(func() {
-		ctx := context.TODO()
-
-		c.Sessions.RunTx(ctx, func(sessions session.Store) error {
-			session, err := sessions.Get(ctx, uuid)
-			if err != nil {
-				return err
-			}
-
-			if time.Now().Before(session.Expires) {
-				return sessions.Delete(ctx, uuid)
-			}
-			return nil
-		})
+		c.Sessions.DeleteExpired(context.TODO(), time.Now())
 	}, expires)
 }
