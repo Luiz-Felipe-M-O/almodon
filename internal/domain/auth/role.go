@@ -64,11 +64,12 @@ func (l *Role) UnmarshalJSON(data []byte) error {
 //
 // If [DefaultHierarchy](x, y) evaluates to true, then the permissions of x are
 // inherited by y.
+//
+// Considere [DefaultHierarchy](x, y) iff x < y, then the hierarchy is defined
+// as follows:
+//
+//   - [Unlogged] < [User] < [Admin] < [Promoted] < [Chief] < [Maintainer]
 func DefaultHierarchy(x, y Role) bool {
-	if !x.IsValid() || !y.IsValid() {
-		return false
-	}
-
 	if x == Unlogged {
 		return true
 	}
@@ -77,10 +78,12 @@ func DefaultHierarchy(x, y Role) bool {
 		return false
 	}
 
+	if !x.IsValid() || !y.IsValid() {
+		return false
+	}
+
 	return x >= y
 }
-
-var errUnknownRole = errors.New("auth: unknown role")
 
 // FromString returns the Role corresponding to the given string. If the string
 // does not correspond to any Role, it returns false.
