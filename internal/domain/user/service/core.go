@@ -6,7 +6,7 @@ import (
 
 	"github.com/alan-b-lima/almodon/internal/domain/user"
 	"github.com/alan-b-lima/almodon/internal/support"
-	"github.com/alan-b-lima/almodon/internal/support/entity"
+	"github.com/alan-b-lima/almodon/internal/support/service"
 
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 
@@ -62,30 +62,32 @@ func (c *Core) Me(ctx context.Context) (user.Result, error) {
 }
 
 func (c *Core) Create(ctx context.Context, req user.Create) (user.CreateResult, error) {
-	u, err := user.New(req.SIAPE, req.Name, req.Email, req.Password, req.Role)
+	var rec user.CreateRecord
+	err := problem.Join(
+		service.Set(&rec.SIAPE, req.SIAPE, user.ProcessSIAPE),
+		service.Set(&rec.Name, req.Name, user.ProcessName),
+		service.Set(&rec.Email, req.Email, user.ProcessEmail),
+		service.Set(&rec.Password, req.Password, user.ProcessPassword),
+		service.Set(&rec.Role, req.Role, user.ProcessRole),
+	)
 	if err != nil {
-		return user.CreateResult{}, err
+		return user.CreateResult{}, user.ErrCreate.Cause(err).Make()
 	}
 
-	rec := user.CreateRecord{
-		UUID:     u.UUID,
-		SIAPE:    u.SIAPE,
-		Name:     u.Name,
-		Email:    u.Email,
-		Password: u.Password,
-		Role:     u.Role,
-		Created:  time.Now(),
-		Updated:  time.Now(),
-	}
+	now := time.Now()
 
-	return user.CreateResult{UUID: u.UUID}, c.Users.Create(ctx, rec)
+	rec.UUID = uuid.NewUUIDv7()
+	rec.Created = now
+	rec.Updated = now
+
+	return user.CreateResult{UUID: rec.UUID}, c.Users.Create(ctx, rec)
 }
 
 func (c *Core) Patch(ctx context.Context, uuid uuid.UUID, req user.Patch) error {
 	var rec user.PatchRecord
 	err := problem.Join(
-		entity.SetOpt(&rec.Name, req.Name, user.ProcessName),
-		entity.SetOpt(&rec.Email, req.Email, user.ProcessEmail),
+		service.SetOpt(&rec.Name, req.Name, user.ProcessName),
+		service.SetOpt(&rec.Email, req.Email, user.ProcessEmail),
 	)
 	if err != nil {
 		return user.ErrUpdate.Cause(err).Make()
