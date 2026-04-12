@@ -19,12 +19,10 @@ create table if not exists Promotions (
 	expires datetime not null,
 
 	foreign key (user) references Users(uuid)
-);
-`
+);`
 
 const Indexes = `
-create index if not exists Promotions_user on Promotions(user)
-`
+create index if not exists Promotions_user on Promotions(user);`
 
 type SQLDB struct {
 	db store.DBTx
@@ -67,7 +65,7 @@ func (s *SQLDB) GetByUser(ctx context.Context, uuid uuid.UUID) (promotion.Record
 }
 
 func (s *SQLDB) Create(ctx context.Context, req promotion.CreateRecord) error {
-	_, err := s.db.ExecContext(ctx, create, req.UUID.Bytes(), req.User, req.Expires)
+	_, err := s.db.ExecContext(ctx, create, req.UUID.Bytes(), req.User.Bytes(), req.Expires)
 	if err != nil {
 		return store.ErrExec.Cause(err).Make()
 	}
