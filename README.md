@@ -4,12 +4,17 @@ Almodon é um sistemas de gestão que tem como objetivo auxiliar as atividades d
 
 ## Contribuidores
 
-- Alan Barbosa Lima            <[alan-b-lima](https://github.com/alan-b-lima)>
-- Breno Augusto Braga Oliveira <[bragabreno](https://github.com/bragabreno)>
-- Lucas Rocha Oliveira         <[Lucas-Rocha-Oliveira](https://github.com/Lucas-Rocha-Oliveira)>
-- Luiz Felipe Melo Oliveira    <[Luiz-Felipe-M-O](https://github.com/Luiz-Felipe-M-O)>
-- Otávio Gomes Calazans        <[otaviogomes03](https://github.com/otaviogomes03)>
-- Rafael Gomes Silva           <[rafleGomes](https://github.com/rafleGomes)>
+- Alan Barbosa Lima                   [@alan-b-lima](https://github.com/alan-b-lima)
+- Breno Augusto Braga Oliveira        [@bragabreno](https://github.com/bragabreno)
+- Juan Pablo Ferreira Costa           [@juan-ferreirax](https://github.com/juan-ferreirax)
+- Luan Filipe Oliveira de Carvalho    [@Luan-11](https://github.com/Luan-11)
+- Luann Moreira Fernandes de Oliveira [@](https://github.com/)
+- Lucas Rocha Oliveira                [@Lucas-Rocha-Oliveira](https://github.com/Lucas-Rocha-Oliveira)
+- Luiz Felipe Melo Oliveira           [@Luiz-Felipe-M-O](https://github.com/Luiz-Felipe-M-O)
+- Mateus Oliveira Silva               [@MateusSilva06](https://github.com/MateusSilva06)
+- Otávio Gomes Calazans               [@otaviogomes03](https://github.com/otaviogomes03)
+- Rafael Gomes Silva                  [@rafleGomes](https://github.com/rafleGomes)
+- Vitor Mozer Vieira Sales            [@VitorMozer9](https://github.com/VitorMozer9)
 
 ## Licença
 
