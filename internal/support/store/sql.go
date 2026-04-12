@@ -9,7 +9,7 @@ type DBTx interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
 func WithTx(ctx context.Context, dbtx DBTx, proc func(DBTx) error) error {
@@ -35,4 +35,3 @@ func WithTx(ctx context.Context, dbtx DBTx, proc func(DBTx) error) error {
 	}
 	return nil
 }
-
