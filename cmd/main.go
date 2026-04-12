@@ -2,106 +2,127 @@ package main
 
 import (
 	"context"
-	"net"
+	"fmt"
 	"net/http"
 	"os"
-	"os/signal"
-	"strconv"
+	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
-	"github.com/alan-b-lima/almodon/internal/api/v1"
+	"github.com/alan-b-lima/almodon/internal/api"
+	"github.com/alan-b-lima/almodon/internal/server"
 	"github.com/alan-b-lima/almodon/internal/support/middleware"
 )
 
-func main() {
-	log := middleware.NewLogger(os.Stdout, "")
-	style := middleware.DefaultStyle()
+const (
+	almodon = `Almodon ` + version + ` ` + runtime.GOOS + `/` + runtime.GOARCH + copyright
+	version = `v0.0.1`
+)
 
-	ln, err := net.Listen("tcp", ":4545")
-	if err != nil {
-		log.Error(err)
+func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "version" {
+		fmt.Println(almodon)
 		return
 	}
-	defer ln.Close()
+
+	addr := ":4545"
+	if len(os.Args) >= 2 {
+		addr = os.Args[1]
+	}
 
 	api, err := api.New()
 	if err != nil {
-		log.Error(err)
+		fmt.Println(err)
 		return
 	}
 	defer func() {
 		if err := api.Close(); err != nil {
-			log.Error(err)
+			fmt.Println(err)
 		}
 	}()
 
-	server := http.Server{Handler: middleware.LogTraffic(log, style, MakeMux(api))}
-	done := EnableGracefulShutdown(func() {
-		log.Info("Shutting server down...")
-		server.Shutdown(context.Background())
+	var mux http.ServeMux
+
+	server, err := server.New(addr, Logger(&mux))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	mux.Handle("/", api)
+	mux.HandleFunc("/terminate", func(w http.ResponseWriter, r *http.Request) {
+		shutdown(server)
 	})
 
-	url := "http://" + strings.Replace(ln.Addr().String(), "[::]", "localhost", 1)
-	log.Infof("Server listening at %s\n", style.HyperLink(url))
+	go SignalShutdown(server)
 
-	if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
-		log.Error(err)
+	fmt.Printf("server listening at http://%s\n", strings.Replace(server.Addr().String(), "[::]", "localhost", 1))
+	if err := server.Serve(); err != nil {
+		fmt.Println(err)
+		return
 	}
 
-	<-done
+	<-server.Done()
+
+	fmt.Printf("%s %s\n", time.Now().Format(time.DateTime), "server powering off...")
+	time.Sleep(time.Second)
 }
 
-func MakeMux(api *api.Almodon) *http.ServeMux {
-	mux := new(http.ServeMux)
+func SignalShutdown(server *server.Server) {
+	<-server.Signal()
+	fmt.Print("\r")
 
-	fs := http.FileServer(http.Dir("../ui/web/dist/"))
-	f := ServeFile("../ui/web/dist/index.html")
-
-	mux.Handle("/", fs)
-	mux.Handle("/{path}", f)
-	mux.Handle("/src/", http.StripPrefix("/src/", http.FileServer(http.Dir("../ui/web/src/"))))
-	mux.Handle("/api/", api)
-	mux.HandleFunc("/terminate/{timeout}", Terminate)
-
-	return mux
+	if err := shutdown(server); err != nil {
+		fmt.Println(err)
+	}
 }
 
-var Signals chan<- os.Signal
+func shutdown(server *server.Server) error {
+	fmt.Printf("%s %s\n", time.Now().Format(time.DateTime), "starting server shutdown...")
 
-func EnableGracefulShutdown(fn func()) <-chan struct{} {
-	signals := make(chan os.Signal, 1)
-	Signals = signals
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
-	done := make(chan struct{}, 1)
-
+	errs := make(chan error, 1)
 	go func() {
-		<-signals
-		fn()
-		done <- struct{}{}
+		errs <- server.Shutdown(ctx)
 	}()
 
-	return done
-}
+	select {
+	case <-ctx.Done():
+		server.CancelOngoing()
+		time.Sleep(5 * time.Second)
 
-type ServeFile string
+	case <-server.Signal():
 
-func (s ServeFile) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, string(s))
-}
-
-func Terminate(w http.ResponseWriter, r *http.Request) {
-	ms, err := strconv.Atoi(r.PathValue("timeout"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	case err := <-errs:
+		if err == nil {
+			return nil
+		}
 	}
 
-	go func() {
-		time.Sleep(time.Duration(ms) * time.Millisecond)
-		Signals <- syscall.SIGTERM
-	}()
-
-	w.WriteHeader(http.StatusNoContent)
+	fmt.Printf("%s %s\n", time.Now().Format(time.DateTime), "starting forceful server shutdown...")
+	return server.ForceShutdown()
 }
+
+func Logger(h http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		rw := middleware.NewResponseWriterWithStatus(w)
+
+		h.ServeHTTP(rw, r)
+
+		fmt.Printf("%s %d %s %s %s\n", time.Now().Format(time.DateTime), rw.StatusCode(), r.RemoteAddr, r.Method, r.URL)
+	}
+}
+
+const copyright = `
+Copyright (C) 2026 Alan Lima
+
+Esse programa está licenciado sob a Licença GPLv3 (GNU General Public License
+versão 3). Este programa é distribuído na esperança de ser útil, mas SEM
+NENHUMA GARANTIA; sem mesmo a garantia implícita de COMERCIALIZAÇÃO ou
+ADEQUAÇÃO A UM PROPÓSITO ESPECÍFICO. Consulte a Licença GPLv3 para mais
+detalhes.
+
+Você deve ter recebido uma cópia da Licença GPLv3 junto com este programa. Se
+não, veja <https://www.gnu.org/licenses/>.`
