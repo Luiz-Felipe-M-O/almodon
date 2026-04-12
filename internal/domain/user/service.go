@@ -44,7 +44,7 @@ type (
 		SIAPE    string    `json:"siape"`
 		Name     string    `json:"name"`
 		Email    string    `json:"email"`
-		Password []byte    `json:"password"`
+		Password []byte    `json:"-"`
 		Role     auth.Role `json:"role"`
 		Logged   bool      `json:"logged"`
 		Created  time.Time `json:"created"`
