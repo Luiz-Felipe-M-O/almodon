@@ -1,5 +1,3 @@
-github.com/alan-b-lima/ansi-escape-sequences v1.1.0 h1:ctCrAj29DjVwdvZ3Aqx5U99yBeF4Ux8oS6pqQ4JwxE8=
-github.com/alan-b-lima/ansi-escape-sequences v1.1.0/go.mod h1:hlc2yHoofFQQNhj2TkDyMRAiIJPAtxKfPgDHoD1AaR8=
 github.com/alan-b-lima/pkg v0.2.0 h1:2tq/w5uJ4Tp3lSxgDS/Hyk3JMZdprnEU9zDkoNs98EY=
 github.com/alan-b-lima/pkg v0.2.0/go.mod h1:TCiMDQU3a/IOj2z+fT+5y/AMtxoCwOICmJm7H/EO3Wg=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
