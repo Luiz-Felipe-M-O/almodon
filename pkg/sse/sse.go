@@ -17,10 +17,8 @@ import (
 // See [https://html.spec.whatwg.org/multipage/server-sent-events.html] for
 // specification details.
 type ServerSentEvent struct {
-	conn interface {
-		io.Writer
-		http.Flusher
-	}
+	writer  io.Writer
+	flusher http.Flusher
 
 	id  string
 	typ string
@@ -52,10 +50,7 @@ func New(w http.ResponseWriter) (*ServerSentEvent, error) {
 // It returns an error if the provided http.ResponseWriter does not support
 // the necessary interfaces for streaming.
 func (e *ServerSentEvent) Attach(w http.ResponseWriter) error {
-	wf, ok := w.(interface {
-		http.ResponseWriter
-		http.Flusher
-	})
+	f, ok := to_flusher(w)
 	if !ok {
 		return ErrUnsupported
 	}
@@ -66,7 +61,8 @@ func (e *ServerSentEvent) Attach(w http.ResponseWriter) error {
 
 	w.WriteHeader(http.StatusOK)
 
-	e.conn = wf
+	e.writer = w
+	e.flusher = f
 
 	e.id = w.Header().Get("Last-Event-Id")
 	e.typ = ""
@@ -90,7 +86,11 @@ func (e *ServerSentEvent) Attach(w http.ResponseWriter) error {
 // may be used to allow the underlying response writer to be claimed by the
 // garbage collector.
 func (e *ServerSentEvent) Detach() {
+	buf := e.buf
 	*e = ServerSentEvent{}
+
+	buf.Reset()
+	e.buf = buf
 }
 
 // Type returns the current event type of the ServerSentEvent, or an empty string
@@ -205,7 +205,7 @@ func (e *ServerSentEvent) Write(b []byte) (int, error) {
 func (e *ServerSentEvent) Dispatch() (int, error) {
 	n, err := e.dispatch()
 	if n > 0 {
-		e.conn.Flush()
+		e.flusher.Flush()
 	}
 
 	return n, err
@@ -217,9 +217,9 @@ func (e *ServerSentEvent) dispatch() (int, error) {
 	if !e.idsent {
 		var err error
 		if e.id != "" {
-			err = write(e.conn, &ntotal, id, []byte(e.id), crlf)
+			err = write(e.writer, &ntotal, id, []byte(e.id), crlf)
 		} else {
-			err = write(e.conn, &ntotal, idping)
+			err = write(e.writer, &ntotal, idping)
 		}
 
 		if err != nil {
@@ -230,7 +230,7 @@ func (e *ServerSentEvent) dispatch() (int, error) {
 	}
 
 	if !e.typsent && e.typ != "" {
-		err := write(e.conn, &ntotal, event, []byte(e.typ), crlf)
+		err := write(e.writer, &ntotal, event, []byte(e.typ), crlf)
 		if err != nil {
 			return ntotal, err
 		}
@@ -241,11 +241,11 @@ func (e *ServerSentEvent) dispatch() (int, error) {
 
 	if !e.bufsent {
 		if e.buf.Len() == 0 {
-			err := write(e.conn, &ntotal, dataping)
+			err := write(e.writer, &ntotal, dataping)
 			return ntotal, err
 		}
 
-		err := write(e.conn, &ntotal, e.buf.Bytes(), crlfcrlf)
+		err := write(e.writer, &ntotal, e.buf.Bytes(), crlfcrlf)
 		if err != nil {
 			return ntotal, err
 		}
@@ -269,10 +269,10 @@ var comment = []byte(":")
 //
 // The same said about arbitrary binary data in Write() applies to Comment().
 func (e *ServerSentEvent) Comment(b []byte) (int, error) {
-	defer e.conn.Flush()
+	defer e.flusher.Flush()
 	var ntotal int
 
-	err := write(e.conn, &ntotal, comment)
+	err := write(e.writer, &ntotal, comment)
 	if err != nil {
 		return ntotal, err
 	}
@@ -284,7 +284,7 @@ func (e *ServerSentEvent) Comment(b []byte) (int, error) {
 	for i := 0; i < len(b); i++ {
 		switch b[i] {
 		case '\r':
-			err := write(e.conn, &ntotal, b[:i])
+			err := write(e.writer, &ntotal, b[:i])
 			if err != nil {
 				return ntotal, err
 			}
@@ -293,7 +293,7 @@ func (e *ServerSentEvent) Comment(b []byte) (int, error) {
 			i = -1
 
 		case '\n':
-			err := write(e.conn, &ntotal, b[:i], crlf, comment)
+			err := write(e.writer, &ntotal, b[:i], crlf, comment)
 			if err != nil {
 				return ntotal, err
 			}
@@ -303,8 +303,23 @@ func (e *ServerSentEvent) Comment(b []byte) (int, error) {
 		}
 	}
 
-	err = write(e.conn, &ntotal, b)
+	err = write(e.writer, &ntotal, b)
 	return ntotal, err
+}
+
+func to_flusher(rw http.ResponseWriter) (http.Flusher, bool) {
+	for {
+		switch t := rw.(type) {
+		case http.Flusher:
+			return t, true
+
+		case interface{ Unwrap() http.ResponseWriter }:
+			rw = t.Unwrap()
+
+		default:
+			return nil, false
+		}
+	}
 }
 
 func write(w io.Writer, n *int, bufs ...[]byte) error {
