@@ -25,38 +25,38 @@ func (m *MockResponseWriter) Write(b []byte) (int, error) {
 
 func TestWrite(t *testing.T) {
 	type Template struct {
-		write    []byte
-		expected []byte
-		samples  int
+		write   []byte
+		expect  []byte
+		samples int
 	}
 
 	type Test struct {
-		writes   [][]byte
-		expected []byte
+		writes [][]byte
+		expect []byte
 	}
 
 	rand := rand.New(rand.NewPCG(0, 2))
 
 	templates := []Template{
 		{
-			write:    []byte("hello"),
-			expected: []byte("data: hello\r\n\r\n"),
-			samples:  30,
+			write:   []byte("hello"),
+			expect:  []byte("data: hello\r\n\r\n"),
+			samples: 30,
 		},
 		{
-			write:    []byte("hello\nworld"),
-			expected: []byte("data: hello\r\ndata: world\r\n\r\n"),
-			samples:  30,
+			write:   []byte("hello\nworld"),
+			expect:  []byte("data: hello\r\ndata: world\r\n\r\n"),
+			samples: 30,
 		},
 		{
-			write:    []byte("hello\nworld\r\neverybody!"),
-			expected: []byte("data: hello\r\ndata: world\r\ndata: everybody!\r\n\r\n"),
-			samples:  30,
+			write:   []byte("hello\nworld\r\neverybody!"),
+			expect:  []byte("data: hello\r\ndata: world\r\ndata: everybody!\r\n\r\n"),
+			samples: 30,
 		},
 		{
-			write:    []byte("hello\n\rwo\rrld\r\neverybody!"),
-			expected: []byte("data: hello\r\ndata: world\r\ndata: everybody!\r\n\r\n"),
-			samples:  30,
+			write:   []byte("hello\n\rwo\rrld\r\neverybody!"),
+			expect:  []byte("data: hello\r\ndata: world\r\ndata: everybody!\r\n\r\n"),
+			samples: 30,
 		},
 	}
 
@@ -64,8 +64,8 @@ func TestWrite(t *testing.T) {
 	for _, template := range templates {
 		for range template.samples {
 			tests = append(tests, Test{
-				writes:   fragment(template.write, 1+rand.IntN(len(template.write)), rand),
-				expected: template.expected,
+				writes: fragment(template.write, 1+rand.IntN(len(template.write)), rand),
+				expect: template.expect,
 			})
 		}
 	}
@@ -89,10 +89,10 @@ func TestWrite(t *testing.T) {
 			t.Errorf("Dispatch should not error: %v", err)
 		}
 
-		if !bytes.Equal(m.buf, test.expected) {
+		if !bytes.Equal(m.buf, test.expect) {
 			t.Errorf(
 				"unexpected output:\n\twrites:   %+q\n\tobtained: %+q\n\texpected: %+q",
-				test.writes, m.buf, test.expected,
+				test.writes, m.buf, test.expect,
 			)
 		}
 	}
