@@ -51,7 +51,8 @@ func main() {
 
 	mux.Handle("/", api)
 	mux.HandleFunc("/terminate", func(w http.ResponseWriter, r *http.Request) {
-		shutdown(server)
+		go shutdown(server)
+		w.WriteHeader(http.StatusNoContent)
 	})
 
 	go SignalShutdown(server)
