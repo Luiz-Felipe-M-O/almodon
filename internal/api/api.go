@@ -3,7 +3,10 @@ package api
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	auths "github.com/alan-b-lima/almodon/internal/domain/auth/resource"
@@ -64,25 +67,28 @@ func New() (*Almodon, error) {
 	var a Almodon
 	var err error
 
-	defer func() {
-		if err != nil {
+	defer func(err *error) {
+		if *err != nil {
 			a.Close()
 		}
-	}()
+	}(&err)
 
-	db, err := a.NewSQLiteDB()
+	db, err := a.MountSQLiteDB()
 	if err != nil {
 		return nil, err
 	}
 
-	stores := a.NewSQLiteStores(db)
-
-	services, err := a.NewServices(stores)
+	stores, err := a.MountSQLiteStores(db)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := a.NewResources(services)
+	services, err := a.MountServices(stores)
+	if err != nil {
+		return nil, err
+	}
+
+	resources := a.MountResources(services)
 
 	handlers := map[string]http.Handler{
 		"auth":       resources.Auth,
@@ -96,8 +102,15 @@ func New() (*Almodon, error) {
 	return &a, nil
 }
 
-func (a *Almodon) NewSQLiteDB() (*sql.DB, error) {
-	db, err := sql.Open("sqlite", "../.data/almodon.db")
+func (a *Almodon) MountSQLiteDB() (*sql.DB, error) {
+	var db *sql.DB
+
+	_, err := os.Stat(".data/almodon.db")
+	if !errors.Is(err, os.ErrNotExist) {
+		db, err = sql.Open("sqlite", ".data/almodon.db")
+	} else {
+		db, err = sql.Open("sqlite", "../.data/almodon.db")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -136,23 +149,33 @@ func (a *Almodon) NewSQLiteDB() (*sql.DB, error) {
 	return db, nil
 }
 
-func (a *Almodon) NewSQLiteStores(db *sql.DB) Stores {
+func (a *Almodon) MountSQLiteStores(db *sql.DB) (Stores, error) {
 	stores := Stores{
 		Promotions: promotionstore.New(db),
 		Sessions:   sessionstore.New(db),
 		Users:      userstore.New(db),
 	}
-
 	a.cleanup.BundleMany(
 		stores.Promotions,
 		stores.Sessions,
 		stores.Users,
 	)
 
-	return stores
+	now := time.Now()
+	var (
+		err_promotions = stores.Promotions.DeleteExpired(context.Background(), now)
+		err_sessions   = stores.Sessions.DeleteExpired(context.Background(), now)
+	)
+
+	err := problem.Join(err_sessions, err_promotions)
+	if err != nil {
+		return Stores{}, err
+	}
+
+	return stores, nil
 }
 
-func (a *Almodon) NewServices(stores Stores) (Services, error) {
+func (a *Almodon) MountServices(stores Stores) (Services, error) {
 	scheduler := scheduler.New()
 	a.cleanup.BundleFunc(scheduler.Stop)
 	scheduler.Start()
@@ -186,13 +209,12 @@ func (a *Almodon) NewServices(stores Stores) (Services, error) {
 	return services, nil
 }
 
-func (a *Almodon) NewResources(services Services) Resources {
+func (a *Almodon) MountResources(services Services) Resources {
 	resources := Resources{
 		Auth:       auths.New(services.Auths),
 		Promotions: promotions.New(services.Promotions),
 		Users:      users.New(services.Users),
 	}
-
 	a.cleanup.BundleMany(
 		resources.Auth,
 		resources.Promotions,
