@@ -10,3 +10,11 @@ func SomeSet[T any](dst *T, src opt.Opt[T]) {
 
 	*dst = val
 }
+
+func NoneNil[T any](opt opt.Opt[T]) any {
+	if val, ok := opt.Unwrap(); ok {
+		return val
+	}
+
+	return nil
+}
