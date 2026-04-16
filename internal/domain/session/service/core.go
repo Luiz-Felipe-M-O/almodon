@@ -67,9 +67,27 @@ func (c *Core) CreateAndGet(ctx context.Context, req session.Create) (session.Re
 	rec.UUID = uuid.NewUUIDv7()
 	rec.Created = time.Now()
 
+	err = c.Sessions.RunTx(ctx, func(store session.Store) error {
+		s, err := store.GetByUser(ctx, req.User)
+		if err != session.ErrNotFound {
+			if err != nil {
+				return err
+			}
+
+			if err := store.Delete(ctx, s.UUID); err != nil {
+				return err
+			}
+		}
+
+		return store.Create(ctx, rec)
+	})
+	if err != nil {
+		return session.Result{}, err
+	}
+
 	c.flush_at(rec.Expires)
 
-	return session.Result(rec), c.Sessions.Create(ctx, rec)
+	return session.Result(rec), nil
 }
 
 // TODO: verify validity of _MaxAge and turn it to an internal error
