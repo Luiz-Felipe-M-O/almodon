@@ -123,7 +123,7 @@ func FromString(str string) (UUID, error) {
 }
 
 // Bytes returns the byte slice representation of the UUID. Changing the
-// returned byte slice will change the original UUID, and vice versa.
+// returned byte slice is safe, this won't change the original UUID.
 func (uuid UUID) Bytes() []byte {
 	return uuid[:]
 }
