@@ -57,6 +57,25 @@ func (s *SQLDB) Get(ctx context.Context, uuid uuid.UUID) (session.Record, error)
 	return r, nil
 }
 
+func (s *SQLDB) GetByUser(ctx context.Context, user uuid.UUID) (session.Record, error) {
+	res := s.db.QueryRowContext(ctx, get_by_user, user.Bytes())
+
+	var r session.Record
+
+	if ok, err := scan(&r, res); err != nil {
+		if ok {
+			return session.Record{}, err
+		}
+
+		if err == sql.ErrNoRows {
+			return session.Record{}, session.ErrNotFound
+		}
+		return session.Record{}, store.ErrQuery.Cause(err).Make()
+	}
+
+	return r, nil
+}
+
 func (s *SQLDB) Create(ctx context.Context, rec session.CreateRecord) error {
 	_, err := s.db.ExecContext(ctx, create, rec.UUID.Bytes(), rec.User.Bytes(), rec.Renewed, rec.Expires, rec.Created)
 	if err != nil {
@@ -119,6 +138,7 @@ func scan(ent *session.Record, scanner interface{ Scan(...any) error }) (bool, e
 
 const (
 	get            = `select uuid, user, renewed, expires, created from Sessions where uuid = ?`
+	get_by_user    = `select uuid, user, renewed, expires, created from Sessions where user = ?`
 	create         = `insert into Sessions (uuid, user, renewed, expires, created) values (?, ?, ?, ?, ?)`
 	update         = `update Sessions set renewed = ?, expires = ? where uuid = ?`
 	delete         = `delete from Sessions where uuid = ?`

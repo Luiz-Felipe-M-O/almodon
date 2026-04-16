@@ -9,6 +9,7 @@ import (
 
 type Store interface {
 	Get(context.Context, uuid.UUID) (Record, error)
+	GetByUser(context.Context, uuid.UUID) (Record, error)
 
 	Create(context.Context, CreateRecord) error
 
