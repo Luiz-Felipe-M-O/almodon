@@ -9,7 +9,6 @@ import (
 	"github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/internal/support/store"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
-	"github.com/alan-b-lima/pkg/opt"
 	"github.com/alan-b-lima/pkg/problem"
 )
 
@@ -23,20 +22,16 @@ create table if not exists Users (
 	role     text not null,
 	created  datetime not null,
 	updated  datetime not null
-);
-`
+);`
 
-const Indexes = `
-create unique index if not exists Users_siape on Users(siape);
-`
+const Indexes = `create unique index if not exists Users_siape on Users(siape);`
 
 const Views = `
 create view if not exists Users_View as
-	select u.uuid, u.siape, u.name, u.email, u.password, iif(p.uuid is null, u.role, "promoted-admin") as "role", s.uuid is not null as "logged", u.created, u.updated
+	select u.uuid, u.siape, u.name, u.email, u.password, iif(p.uuid is null, u.role, 'promoted-admin') as 'role', s.uuid is not null as 'logged', u.created, u.updated
 	from Users u
 	left join Sessions s on s.user = u.uuid
-	left join Promotions p on p.user = u.uuid;
-`
+	left join Promotions p on p.user = u.uuid;`
 
 type SQLDB struct {
 	db store.DBTx
@@ -131,7 +126,7 @@ func (s *SQLDB) Create(ctx context.Context, rec user.CreateRecord) error {
 }
 
 func (s *SQLDB) Patch(ctx context.Context, uuid uuid.UUID, rec user.PatchRecord) error {
-	_, err := s.db.ExecContext(ctx, patch, none_nil(rec.Name), none_nil(rec.Email), rec.Updated, uuid.Bytes())
+	_, err := s.db.ExecContext(ctx, patch, store.NoneNil(rec.Name), store.NoneNil(rec.Email), rec.Updated, uuid.Bytes())
 	if err != nil {
 		return store.ErrExec.Cause(err).Make()
 	}
@@ -176,13 +171,6 @@ func role_from_string(role string) (auth.Role, error) {
 		return role, nil
 	}
 	return auth.Unlogged, user.ErrRoleInvalid
-}
-
-func none_nil[T any](opt opt.Opt[T]) any {
-	if val, ok := opt.Unwrap(); ok {
-		return val
-	}
-	return nil
 }
 
 const (
