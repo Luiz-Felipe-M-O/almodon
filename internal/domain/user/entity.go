@@ -11,6 +11,8 @@ import (
 )
 
 const (
+	NameMaxLen = 128
+
 	PasswordMinLen = 8
 	PasswordMaxLen = 64
 )
@@ -33,6 +35,10 @@ func ProcessSIAPE(siape string) (string, error) {
 func ProcessName(name string) (string, error) {
 	if name == "" {
 		return "", ErrNameEmpty
+	}
+
+	if len(name) >= NameMaxLen {
+		return "", ErrNameTooLong
 	}
 
 	return name, nil

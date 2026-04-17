@@ -7,7 +7,8 @@ var (
 	ErrUpdate   = problem.Imp(problem.SemanticalError, "user-update").Message("could not update user")
 	ErrNotFound = problem.New(problem.NotFound, "user-not-found", "user not found", nil, nil)
 
-	ErrNameEmpty = problem.New(problem.SemanticalError, "name-empty", "name must not be empty", nil, nil)
+	ErrNameEmpty   = problem.New(problem.SemanticalError, "name-empty", "name must not be empty", nil, nil)
+	ErrNameTooLong = problem.Imp(problem.SemanticalError, "name-too-long").Format("name must be less than %d characters").Details(map[string]any{"max": NameMaxLen}).Make(NameMaxLen)
 
 	ErrSiapeInvalid = problem.New(problem.Malformed, "siape-invalid", "siape must be a seven-character number", nil, nil)
 	ErrSiapeTaken   = problem.New(problem.Conflict, "siape-in-use", "siape already taken", nil, nil)
