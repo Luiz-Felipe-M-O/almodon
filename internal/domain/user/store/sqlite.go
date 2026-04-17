@@ -82,25 +82,15 @@ func (s *SQLDB) CountChiefs(ctx context.Context) (int, error) {
 }
 
 func (s *SQLDB) Get(ctx context.Context, uuid uuid.UUID) (user.Record, error) {
-	row := s.db.QueryRowContext(ctx, get, uuid.Bytes())
-
-	var ent user.Record
-	if ok, err := scan(&ent, row); err != nil {
-		if ok {
-			return user.Record{}, err
-		}
-
-		if err == sql.ErrNoRows {
-			return user.Record{}, user.ErrNotFound
-		}
-		return user.Record{}, store.ErrQuery.Cause(err).Make()
-	}
-
-	return ent, nil
+	return s.get(ctx, get, uuid.Bytes())
 }
 
 func (s *SQLDB) GetBySIAPE(ctx context.Context, siape string) (user.Record, error) {
-	row := s.db.QueryRowContext(ctx, get_by_siape, siape)
+	return s.get(ctx, get_by_siape, siape)
+}
+
+func (s *SQLDB) get(ctx context.Context, query string, args ...any) (user.Record, error) {
+	row := s.db.QueryRowContext(ctx, query, args...)
 
 	var ent user.Record
 	if ok, err := scan(&ent, row); err != nil {
