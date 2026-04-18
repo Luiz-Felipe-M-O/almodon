@@ -51,15 +51,10 @@ func (rc *Resource) ListByECampus(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(r.Context(), func(ctx context.Context) ([]material.Result, error) {
 		ecampus, err := strconv.Atoi(r.PathValue("ecampus"))
 		if err != nil {
-			return nil, resource.ErrBadUUID
+			return nil, resource.ErrBadInteger
 		}
 
-		ent, err := rc.Materials.ListByECampus(ctx, ecampus)
-		if err != nil {
-			return nil, err
-		}
-
-		return ent, nil
+		return rc.Materials.ListByECampus(ctx, ecampus)
 	}, w, r)
 }
 
@@ -67,15 +62,10 @@ func (rc *Resource) ListByCATMAT(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(r.Context(), func(ctx context.Context) ([]material.Result, error) {
 		catmat, err := strconv.Atoi(r.PathValue("catmat"))
 		if err != nil {
-			return nil, resource.ErrBadUUID
+			return nil, resource.ErrBadInteger
 		}
 
-		ent, err := rc.Materials.ListByCATMAT(ctx, catmat)
-		if err != nil {
-			return nil, err
-		}
-
-		return ent, nil
+		return rc.Materials.ListByCATMAT(ctx, catmat)
 	}, w, r)
 }
 
@@ -83,15 +73,10 @@ func (rc *Resource) ListBySIADS(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(r.Context(), func(ctx context.Context) ([]material.Result, error) {
 		siads, err := strconv.Atoi(r.PathValue("siads"))
 		if err != nil {
-			return nil, resource.ErrBadUUID
+			return nil, resource.ErrBadInteger
 		}
 
-		ent, err := rc.Materials.ListBySIADS(ctx, siads)
-		if err != nil {
-			return nil, err
-		}
-
-		return ent, nil
+		return rc.Materials.ListBySIADS(ctx, siads)
 	}, w, r)
 }
 
@@ -102,23 +87,13 @@ func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
 			return material.Result{}, resource.ErrBadUUID
 		}
 
-		ent, res := rc.Materials.Get(ctx, uuid)
-		if res != nil {
-			return material.Result{}, res
-		}
-
-		return ent, nil
+		return rc.Materials.Get(ctx, uuid)
 	}, w, r)
 }
 
 func (rc *Resource) Create(w http.ResponseWriter, r *http.Request) {
 	resource.PostHandler(r.Context(), func(ctx context.Context, req material.Create) (material.CreateResult, error) {
-		res, err := rc.Materials.Create(ctx, req)
-		if err != nil {
-			return material.CreateResult{}, err
-		}
-
-		return res, nil
+		return rc.Materials.Create(ctx, req)
 	}, w, r)
 }
 

@@ -44,24 +44,12 @@ func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
 			return promotion.Result{}, resource.ErrBadUUID
 		}
 
-		ent, err := rc.Promotions.Get(ctx, uuid)
-		if err != nil {
-			return promotion.Result{}, err
-		}
-
-		return promotion.Result(ent), nil
+		return rc.Promotions.Get(ctx, uuid)
 	}, w, r)
 }
 
 func (rc *Resource) Create(w http.ResponseWriter, r *http.Request) {
-	resource.PostHandler(r.Context(), func(ctx context.Context, req promotion.Create) (promotion.CreateResult, error) {
-		res, err := rc.Promotions.Create(ctx, req)
-		if err != nil {
-			return promotion.CreateResult{}, err
-		}
-
-		return res, nil
-	}, w, r)
+	resource.PostHandler(r.Context(), rc.Promotions.Create, w, r)
 }
 
 func (rc *Resource) Update(w http.ResponseWriter, r *http.Request) {

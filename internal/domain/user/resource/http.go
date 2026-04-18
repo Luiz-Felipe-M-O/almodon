@@ -41,9 +41,7 @@ func New(users user.Service) *Resource {
 }
 
 func (rc *Resource) List(w http.ResponseWriter, r *http.Request) {
-	resource.GetHandler(r.Context(), func(ctx context.Context) ([]user.Result, error) {
-		return rc.Users.List(ctx)
-	}, w, r)
+	resource.GetHandler(r.Context(), rc.Users.List, w, r)
 }
 
 func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
@@ -53,12 +51,7 @@ func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
 			return user.Result{}, resource.ErrBadUUID
 		}
 
-		ent, err := rc.Users.Get(ctx, uuid)
-		if err != nil {
-			return user.Result{}, err
-		}
-
-		return ent, nil
+		return rc.Users.Get(ctx, uuid)
 	}, w, r)
 }
 
@@ -66,24 +59,12 @@ func (rc *Resource) GetBySIAPE(w http.ResponseWriter, r *http.Request) {
 	resource.GetHandler(r.Context(), func(ctx context.Context) (user.Result, error) {
 		siape := r.PathValue("siape")
 
-		ent, err := rc.Users.GetBySIAPE(ctx, siape)
-		if err != nil {
-			return user.Result{}, err
-		}
-
-		return ent, nil
+		return rc.Users.GetBySIAPE(ctx, siape)
 	}, w, r)
 }
 
 func (rc *Resource) Create(w http.ResponseWriter, r *http.Request) {
-	resource.PostHandler(r.Context(), func(ctx context.Context, req user.Create) (user.CreateResult, error) {
-		res, err := rc.Users.Create(ctx, req)
-		if err != nil {
-			return user.CreateResult{}, err
-		}
-
-		return res, nil
-	}, w, r)
+	resource.PostHandler(r.Context(), rc.Users.Create, w, r)
 }
 
 func (rc *Resource) Patch(w http.ResponseWriter, r *http.Request) {
@@ -109,7 +90,5 @@ func (rc *Resource) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rc *Resource) Me(w http.ResponseWriter, r *http.Request) {
-	resource.GetHandler(r.Context(), func(ctx context.Context) (user.Result, error) {
-		return rc.Users.Me(ctx)
-	}, w, r)
+	resource.GetHandler(r.Context(), rc.Users.Me, w, r)
 }
