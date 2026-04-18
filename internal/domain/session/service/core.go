@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/session"
-	"github.com/alan-b-lima/almodon/internal/support"
 	"github.com/alan-b-lima/almodon/internal/support/service"
 
 	"github.com/alan-b-lima/almodon/pkg/uuid"
@@ -21,15 +20,11 @@ type Core struct {
 
 var _ session.Service = (*Core)(nil)
 
-func New(sessions session.Store, scheduler *scheduler.Scheduler) (*Core, error) {
-	if scheduler == nil {
-		return nil, support.ErrNilPointer.Message("scheduler required").Make()
-	}
-
+func New(sessions session.Store, scheduler *scheduler.Scheduler) *Core {
 	return &Core{
 		Sessions:  sessions,
 		Scheduler: scheduler,
-	}, nil
+	}
 }
 
 const _MaxAge = 1 * time.Hour

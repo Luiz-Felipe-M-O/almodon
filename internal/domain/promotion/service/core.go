@@ -6,7 +6,6 @@ import (
 
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
 	"github.com/alan-b-lima/almodon/internal/domain/user"
-	"github.com/alan-b-lima/almodon/internal/support"
 	"github.com/alan-b-lima/almodon/internal/support/service"
 	entity "github.com/alan-b-lima/almodon/internal/support/service"
 
@@ -25,16 +24,12 @@ type Core struct {
 
 var _ promotion.Service = &Core{}
 
-func New(promotions promotion.Store, users user.Service, scheduler *scheduler.Scheduler) (*Core, error) {
-	if scheduler == nil {
-		return nil, support.ErrNilPointer.Message("scheduler required").Make()
-	}
-
+func New(promotions promotion.Store, users user.Service, scheduler *scheduler.Scheduler) *Core {
 	return &Core{
 		Promotions: promotions,
 		Users:      users,
 		Scheduler:  scheduler,
-	}, nil
+	}
 }
 
 const _MaxAge = 1 * 24 * time.Hour
