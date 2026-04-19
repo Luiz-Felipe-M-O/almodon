@@ -11,6 +11,7 @@ import (
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	auths "github.com/alan-b-lima/almodon/internal/domain/auth/resource"
 	authserve "github.com/alan-b-lima/almodon/internal/domain/auth/service"
+	"github.com/alan-b-lima/almodon/pkg/closer"
 
 	"github.com/alan-b-lima/almodon/internal/domain/item"
 	items "github.com/alan-b-lima/almodon/internal/domain/item/resource"
@@ -36,8 +37,6 @@ import (
 	userserve "github.com/alan-b-lima/almodon/internal/domain/user/service"
 	userstore "github.com/alan-b-lima/almodon/internal/domain/user/store"
 
-	"github.com/alan-b-lima/almodon/pkg/closer"
-
 	"github.com/alan-b-lima/pkg/problem"
 	"github.com/alan-b-lima/pkg/scheduler"
 
@@ -47,7 +46,7 @@ import (
 type Almodon struct {
 	http.ServeMux
 
-	cleanup closer.Bundle
+	bundle closer.Bundle
 }
 
 type (
@@ -129,7 +128,7 @@ func (a *Almodon) MountSQLiteDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	a.cleanup.Bundle(db)
+	a.bundle.Bundle(db)
 
 	ctx := context.TODO()
 
@@ -146,12 +145,12 @@ func (a *Almodon) MountSQLiteDB() (*sql.DB, error) {
 		sessionstore.Table,
 		promotionstore.Table,
 
-		itemstore.Views,
 		materialstore.Indexes,
 		promotionstore.Indexes,
 		sessionstore.Indexes,
 		userstore.Indexes,
 
+		itemstore.Views,
 		userstore.Views,
 	}
 
@@ -172,13 +171,6 @@ func (a *Almodon) MountSQLiteStores(db *sql.DB) (Stores, error) {
 		Sessions:   sessionstore.New(db),
 		Users:      userstore.New(db),
 	}
-	a.cleanup.BundleMany(
-		stores.Items,
-		stores.Materials,
-		stores.Promotions,
-		stores.Sessions,
-		stores.Users,
-	)
 
 	if err := has_root_user(context.TODO(), stores.Users); err != nil {
 		return Stores{}, err
@@ -199,7 +191,7 @@ func (a *Almodon) MountSQLiteStores(db *sql.DB) (Stores, error) {
 
 func (a *Almodon) MountServices(stores Stores) Services {
 	scheduler := scheduler.New()
-	a.cleanup.BundleFunc(scheduler.Stop)
+	a.bundle.BundleFunc(scheduler.Stop)
 	scheduler.Start()
 
 	services := Services{
@@ -211,15 +203,6 @@ func (a *Almodon) MountServices(stores Stores) Services {
 
 	services.Auths = authserve.New(services.Users, services.Sessions)
 	services.Promotions = promotionserve.New(stores.Promotions, services.Users, scheduler)
-
-	a.cleanup.BundleMany(
-		services.Auths,
-		services.Items,
-		services.Materials,
-		services.Promotions,
-		services.Sessions,
-		services.Users,
-	)
 
 	return services
 }
@@ -233,12 +216,6 @@ func (a *Almodon) MountAuthServices(services Services) Services {
 		Sessions:   services.Sessions,
 		Users:      userserve.NewGate(services.Users, services.Auths),
 	}
-	a.cleanup.BundleMany(
-		authed.Items,
-		authed.Materials,
-		authed.Promotions,
-		authed.Users,
-	)
 
 	return authed
 }
@@ -251,19 +228,12 @@ func (a *Almodon) MountResources(services Services) Resources {
 		Promotions: promotions.New(services.Promotions),
 		Users:      users.New(services.Users),
 	}
-	a.cleanup.BundleMany(
-		resources.Auth,
-		resources.Items,
-		resources.Materials,
-		resources.Promotions,
-		resources.Users,
-	)
 
 	return resources
 }
 
 func (a *Almodon) Close() error {
-	return a.cleanup.Close()
+	return a.bundle.Close()
 }
 
 func has_root_user(ctx context.Context, store user.Store) error {
