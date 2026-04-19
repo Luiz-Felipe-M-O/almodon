@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"runtime"
@@ -14,15 +15,21 @@ import (
 	"github.com/alan-b-lima/almodon/internal/support/middleware"
 )
 
-const (
-	almodon = `Almodon ` + version + ` ` + runtime.GOOS + `/` + runtime.GOARCH + copyright
-	version = `v0.0.1`
-)
-
 func main() {
-	if len(os.Args) >= 2 && os.Args[1] == "version" {
-		fmt.Println(almodon)
-		return
+	if len(os.Args) >= 2 {
+		switch os.Args[1] {
+		case "version":
+			fmt.Println(version)
+			return
+
+		case "copyright", "legal":
+			fmt.Println(legal)
+			return
+
+		case "help":
+			fmt.Println(help)
+			return
+		}
 	}
 
 	addr := ":4545"
@@ -30,10 +37,15 @@ func main() {
 		addr = os.Args[1]
 	}
 
+	if err := Main(addr); err != nil {
+		fmt.Println(err)
+	}
+}
+
+func Main(addr string) error {
 	api, err := api.New()
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	defer func() {
 		if err := api.Close(); err != nil {
@@ -41,12 +53,12 @@ func main() {
 		}
 	}()
 
+	log := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 	var mux http.ServeMux
 
-	server, err := server.New(addr, Logger(&mux))
+	server, err := server.New(addr, Logger(log, &mux))
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 
 	mux.Handle("/", api)
@@ -57,16 +69,15 @@ func main() {
 
 	go SignalShutdown(server)
 
-	fmt.Printf("server listening at http://%s\n", strings.Replace(server.Addr().String(), "[::]", "localhost", 1))
+	fmt.Println("server listening at http://" + strings.Replace(server.Addr().String(), "[::]", "localhost", 1))
 	if err := server.Serve(); err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 
 	<-server.Done()
 
 	fmt.Printf("%s %s\n", time.Now().Format(time.DateTime), "server powering off...")
-	time.Sleep(time.Second)
+	return nil
 }
 
 func SignalShutdown(server *server.Server) {
@@ -106,15 +117,23 @@ func shutdown(server *server.Server) error {
 	return server.ForceShutdown()
 }
 
-func Logger(h http.Handler) http.HandlerFunc {
+func Logger(log *log.Logger, h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rw := middleware.NewResponseWriterWithStatus(w)
 
 		h.ServeHTTP(rw, r)
 
-		fmt.Printf("%s %d %s %s %s\n", time.Now().Format(time.DateTime), rw.StatusCode(), r.RemoteAddr, r.Method, r.URL)
+		log.Printf("%d %s %s %s\n", rw.StatusCode(), r.RemoteAddr, r.Method, r.URL)
 	}
 }
+
+const (
+	version = `Almodon ` + tag + ` ` + runtime.GOOS + `/` + runtime.GOARCH
+	legal   = version + copyright
+	help    = version + "\n\n" + `Work in Progress`
+)
+
+const tag = `v0.0.1`
 
 const copyright = `
 Copyright (C) 2026 Alan Lima
