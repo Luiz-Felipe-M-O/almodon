@@ -12,6 +12,16 @@ import (
 	auths "github.com/alan-b-lima/almodon/internal/domain/auth/resource"
 	authserve "github.com/alan-b-lima/almodon/internal/domain/auth/service"
 
+	"github.com/alan-b-lima/almodon/internal/domain/item"
+	items "github.com/alan-b-lima/almodon/internal/domain/item/resource"
+	itemserve "github.com/alan-b-lima/almodon/internal/domain/item/service"
+	itemstore "github.com/alan-b-lima/almodon/internal/domain/item/store"
+
+	"github.com/alan-b-lima/almodon/internal/domain/material"
+	materials "github.com/alan-b-lima/almodon/internal/domain/material/resource"
+	materialserve "github.com/alan-b-lima/almodon/internal/domain/material/service"
+	materialstore "github.com/alan-b-lima/almodon/internal/domain/material/store"
+
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
 	promotions "github.com/alan-b-lima/almodon/internal/domain/promotion/resource"
 	promotionserve "github.com/alan-b-lima/almodon/internal/domain/promotion/service"
@@ -26,14 +36,12 @@ import (
 	userserve "github.com/alan-b-lima/almodon/internal/domain/user/service"
 	userstore "github.com/alan-b-lima/almodon/internal/domain/user/store"
 
-	"github.com/alan-b-lima/almodon/internal/support/store"
-
 	"github.com/alan-b-lima/almodon/pkg/closer"
 
 	"github.com/alan-b-lima/pkg/problem"
 	"github.com/alan-b-lima/pkg/scheduler"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Almodon struct {
@@ -44,6 +52,8 @@ type Almodon struct {
 
 type (
 	Stores struct {
+		Items      item.Store
+		Materials  material.Store
 		Promotions promotion.Store
 		Sessions   session.Store
 		Users      user.Store
@@ -51,6 +61,8 @@ type (
 
 	Services struct {
 		Auths      auth.Service
+		Items      item.Service
+		Materials  material.Service
 		Promotions promotion.Service
 		Sessions   session.Service
 		Users      user.Service
@@ -58,10 +70,14 @@ type (
 
 	Resources struct {
 		Auth       *auths.Resource
+		Items      *items.Resource
+		Materials  *materials.Resource
 		Promotions *promotions.Resource
 		Users      *users.Resource
 	}
 )
+
+var ErrNoRootUser = errors.New("no root user found in database")
 
 func New() (*Almodon, error) {
 	var a Almodon
@@ -83,15 +99,14 @@ func New() (*Almodon, error) {
 		return nil, err
 	}
 
-	services, err := a.MountServices(stores)
-	if err != nil {
-		return nil, err
-	}
-
+	core := a.MountServices(stores)
+	services := a.MountAuthServices(core)
 	resources := a.MountResources(services)
 
 	handlers := map[string]http.Handler{
 		"auth":       resources.Auth,
+		"items":      resources.Items,
+		"materials":  resources.Materials,
 		"promotions": resources.Promotions,
 		"users":      resources.Users,
 	}
@@ -107,43 +122,43 @@ func (a *Almodon) MountSQLiteDB() (*sql.DB, error) {
 
 	_, err := os.Stat(".data/almodon.db")
 	if !errors.Is(err, os.ErrNotExist) {
-		db, err = sql.Open("sqlite", ".data/almodon.db")
+		db, err = sql.Open("sqlite3", ".data/almodon.db")
 	} else {
-		db, err = sql.Open("sqlite", "../.data/almodon.db")
+		db, err = sql.Open("sqlite3", "../.data/almodon.db")
 	}
 	if err != nil {
 		return nil, err
 	}
 	a.cleanup.Bundle(db)
 
-	if err := db.Ping(); err != nil {
+	ctx := context.TODO()
+
+	if err := db.PingContext(ctx); err != nil {
 		return nil, err
 	}
 
-	ctx := context.TODO()
-	err = store.WithTx(ctx, db, func(tx store.DBTx) error {
-		operations := [...]string{
-			userstore.Table,
-			sessionstore.Table,
-			promotionstore.Table,
+	operations := [...]string{
+		"PRAGMA foreign_keys = ON;",
 
-			userstore.Indexes,
-			sessionstore.Indexes,
-			promotionstore.Indexes,
+		materialstore.Table,
+		itemstore.Table,
+		userstore.Table,
+		sessionstore.Table,
+		promotionstore.Table,
 
-			userstore.Views,
+		itemstore.Views,
+		materialstore.Indexes,
+		promotionstore.Indexes,
+		sessionstore.Indexes,
+		userstore.Indexes,
+
+		userstore.Views,
+	}
+
+	for _, op := range operations {
+		if _, err := db.ExecContext(ctx, op); err != nil {
+			return nil, err
 		}
-
-		for _, op := range operations {
-			if _, err := tx.ExecContext(ctx, op); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
 
 	return db, nil
@@ -151,72 +166,95 @@ func (a *Almodon) MountSQLiteDB() (*sql.DB, error) {
 
 func (a *Almodon) MountSQLiteStores(db *sql.DB) (Stores, error) {
 	stores := Stores{
+		Items:      itemstore.New(db),
+		Materials:  materialstore.New(db),
 		Promotions: promotionstore.New(db),
 		Sessions:   sessionstore.New(db),
 		Users:      userstore.New(db),
 	}
 	a.cleanup.BundleMany(
+		stores.Items,
+		stores.Materials,
 		stores.Promotions,
 		stores.Sessions,
 		stores.Users,
 	)
 
+	if err := has_root_user(context.TODO(), stores.Users); err != nil {
+		return Stores{}, err
+	}
+
 	now := time.Now()
 	var (
-		err_promotions = stores.Promotions.DeleteExpired(context.Background(), now)
-		err_sessions   = stores.Sessions.DeleteExpired(context.Background(), now)
+		err_promotions = stores.Promotions.DeleteExpired(context.TODO(), now)
+		err_sessions   = stores.Sessions.DeleteExpired(context.TODO(), now)
 	)
 
-	err := problem.Join(err_sessions, err_promotions)
-	if err != nil {
+	if err := problem.Join(err_sessions, err_promotions); err != nil {
 		return Stores{}, err
 	}
 
 	return stores, nil
 }
 
-func (a *Almodon) MountServices(stores Stores) (Services, error) {
+func (a *Almodon) MountServices(stores Stores) Services {
 	scheduler := scheduler.New()
 	a.cleanup.BundleFunc(scheduler.Stop)
 	scheduler.Start()
 
-	var (
-		sessions, err_sessions     = sessionserve.New(stores.Sessions, scheduler)
-		users                      = userserve.New(stores.Users)
-		promotions, err_promotions = promotionserve.New(stores.Promotions, users, scheduler)
-		auths                      = authserve.New(users, sessions)
-	)
-	a.cleanup.BundleMany(auths, promotions, sessions, users)
-
-	err := problem.Join(err_sessions, err_promotions)
-	if err != nil {
-		return Services{}, err
-	}
-
 	services := Services{
-		Auths:      auths,
-		Promotions: promotionserve.NewGate(promotions, auths),
-		Sessions:   sessions,
-		Users:      userserve.NewGate(users, auths),
+		Items:     itemserve.New(stores.Items),
+		Materials: materialserve.New(stores.Materials),
+		Sessions:  sessionserve.New(stores.Sessions, scheduler),
+		Users:     userserve.New(stores.Users),
 	}
+
+	services.Auths = authserve.New(services.Users, services.Sessions)
+	services.Promotions = promotionserve.New(stores.Promotions, services.Users, scheduler)
+
 	a.cleanup.BundleMany(
 		services.Auths,
+		services.Items,
+		services.Materials,
 		services.Promotions,
 		services.Sessions,
 		services.Users,
 	)
 
-	return services, nil
+	return services
+}
+
+func (a *Almodon) MountAuthServices(services Services) Services {
+	authed := Services{
+		Auths:      services.Auths,
+		Items:      itemserve.NewGate(services.Items, services.Auths),
+		Materials:  materialserve.NewGate(services.Materials, services.Auths),
+		Promotions: promotionserve.NewGate(services.Promotions, services.Auths),
+		Sessions:   services.Sessions,
+		Users:      userserve.NewGate(services.Users, services.Auths),
+	}
+	a.cleanup.BundleMany(
+		authed.Items,
+		authed.Materials,
+		authed.Promotions,
+		authed.Users,
+	)
+
+	return authed
 }
 
 func (a *Almodon) MountResources(services Services) Resources {
 	resources := Resources{
 		Auth:       auths.New(services.Auths),
+		Items:      items.New(services.Items),
+		Materials:  materials.New(services.Materials),
 		Promotions: promotions.New(services.Promotions),
 		Users:      users.New(services.Users),
 	}
 	a.cleanup.BundleMany(
 		resources.Auth,
+		resources.Items,
+		resources.Materials,
 		resources.Promotions,
 		resources.Users,
 	)
@@ -226,4 +264,17 @@ func (a *Almodon) MountResources(services Services) Resources {
 
 func (a *Almodon) Close() error {
 	return a.cleanup.Close()
+}
+
+func has_root_user(ctx context.Context, store user.Store) error {
+	_, err := store.GetBySIAPE(ctx, "0000000")
+	if err != nil {
+		if err == user.ErrNotFound {
+			return ErrNoRootUser
+		}
+
+		return err
+	}
+
+	return nil
 }
