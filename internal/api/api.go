@@ -6,12 +6,10 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	auths "github.com/alan-b-lima/almodon/internal/domain/auth/resource"
 	authserve "github.com/alan-b-lima/almodon/internal/domain/auth/service"
-	"github.com/alan-b-lima/almodon/pkg/closer"
 
 	"github.com/alan-b-lima/almodon/internal/domain/item"
 	items "github.com/alan-b-lima/almodon/internal/domain/item/resource"
@@ -37,7 +35,8 @@ import (
 	userserve "github.com/alan-b-lima/almodon/internal/domain/user/service"
 	userstore "github.com/alan-b-lima/almodon/internal/domain/user/store"
 
-	"github.com/alan-b-lima/pkg/problem"
+	"github.com/alan-b-lima/almodon/pkg/closer"
+
 	"github.com/alan-b-lima/pkg/scheduler"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -45,7 +44,6 @@ import (
 
 type Almodon struct {
 	http.ServeMux
-
 	bundle closer.Bundle
 }
 
@@ -88,17 +86,23 @@ func New() (*Almodon, error) {
 		}
 	}(&err)
 
-	db, err := a.MountSQLiteDB()
+	ctx := context.TODO()
+
+	db, err := a.MountSQLiteDB(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	stores, err := a.MountSQLiteStores(db)
+	stores, err := a.MountSQLiteStores(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 
-	core := a.MountServices(stores)
+	core, err := a.MountServices(ctx, stores)
+	if err != nil {
+		return nil, err
+	}
+
 	services := a.MountAuthServices(core)
 	resources := a.MountResources(services)
 
@@ -116,7 +120,7 @@ func New() (*Almodon, error) {
 	return &a, nil
 }
 
-func (a *Almodon) MountSQLiteDB() (*sql.DB, error) {
+func (a *Almodon) MountSQLiteDB(ctx context.Context) (*sql.DB, error) {
 	var db *sql.DB
 
 	_, err := os.Stat(".data/almodon.db")
@@ -129,8 +133,6 @@ func (a *Almodon) MountSQLiteDB() (*sql.DB, error) {
 		return nil, err
 	}
 	a.bundle.Bundle(db)
-
-	ctx := context.TODO()
 
 	if err := db.PingContext(ctx); err != nil {
 		return nil, err
@@ -163,7 +165,7 @@ func (a *Almodon) MountSQLiteDB() (*sql.DB, error) {
 	return db, nil
 }
 
-func (a *Almodon) MountSQLiteStores(db *sql.DB) (Stores, error) {
+func (a *Almodon) MountSQLiteStores(ctx context.Context, db *sql.DB) (Stores, error) {
 	stores := Stores{
 		Items:      itemstore.New(db),
 		Materials:  materialstore.New(db),
@@ -172,24 +174,14 @@ func (a *Almodon) MountSQLiteStores(db *sql.DB) (Stores, error) {
 		Users:      userstore.New(db),
 	}
 
-	if err := has_root_user(context.TODO(), stores.Users); err != nil {
-		return Stores{}, err
-	}
-
-	now := time.Now()
-	var (
-		err_promotions = stores.Promotions.DeleteExpired(context.TODO(), now)
-		err_sessions   = stores.Sessions.DeleteExpired(context.TODO(), now)
-	)
-
-	if err := problem.Join(err_sessions, err_promotions); err != nil {
+	if err := has_root_user(ctx, stores.Users); err != nil {
 		return Stores{}, err
 	}
 
 	return stores, nil
 }
 
-func (a *Almodon) MountServices(stores Stores) Services {
+func (a *Almodon) MountServices(ctx context.Context, stores Stores) (Services, error) {
 	scheduler := scheduler.New()
 	a.bundle.BundleFunc(scheduler.Stop)
 	scheduler.Start()
@@ -204,7 +196,15 @@ func (a *Almodon) MountServices(stores Stores) Services {
 	services.Auths = authserve.New(services.Users, services.Sessions)
 	services.Promotions = promotionserve.New(stores.Promotions, services.Users, scheduler)
 
-	return services
+	var (
+		err_promotions = post_for_scheduler(ctx, services.Promotions)
+		err_sessions   = post_for_scheduler(ctx, services.Sessions)
+	)
+	if err := errors.Join(err_sessions, err_promotions); err != nil {
+		return Services{}, err
+	}
+
+	return services, nil
 }
 
 func (a *Almodon) MountAuthServices(services Services) Services {
@@ -247,4 +247,13 @@ func has_root_user(ctx context.Context, store user.Store) error {
 	}
 
 	return nil
+}
+
+func post_for_scheduler(ctx context.Context, service any) error {
+	pub, ok := service.(interface{ Publish(context.Context) error })
+	if !ok {
+		return nil
+	}
+
+	return pub.Publish(ctx)
 }
