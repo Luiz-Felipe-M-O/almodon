@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
-	entity "github.com/alan-b-lima/almodon/internal/support/service"
+	"github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/internal/support/store"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 	"github.com/alan-b-lima/pkg/problem"
@@ -34,26 +34,40 @@ func New(db store.DBTx) promotion.Store {
 
 var _ promotion.Store = (*SQLDB)(nil)
 
-func (s *SQLDB) Get(ctx context.Context, uuid uuid.UUID) (promotion.Record, error) {
-	row := s.db.QueryRowContext(ctx, get, uuid.Bytes())
+func (s *SQLDB) List(ctx context.Context) ([]promotion.Record, error) {
+	rows, err := s.db.QueryContext(ctx, list)
+	if err != nil {
+		return nil, store.ErrQuery.Cause(err).Make()
+	}
+	defer rows.Close()
 
-	var res promotion.Record
-	if err := scan(&res, row); err != nil {
-		if err == sql.ErrNoRows {
-			return promotion.Record{}, promotion.ErrNotFound
+	var recs []promotion.Record
+	for rows.Next() {
+		var rec promotion.Record
+		if err := scan(&rec, rows); err != nil {
+			return nil, store.ErrQuery.Cause(err).Make()
 		}
 
-		return promotion.Record{}, store.ErrQuery.Cause(err).Make()
+		recs = append(recs, rec)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, store.ErrQuery.Cause(err).Make()
 	}
 
-	return res, nil
+	return recs, nil
+}
+
+func (s *SQLDB) Get(ctx context.Context, uuid uuid.UUID) (promotion.Record, error) {
+	return s.get(s.db.QueryRowContext(ctx, get, uuid.Bytes()))
 }
 
 func (s *SQLDB) GetByUser(ctx context.Context, uuid uuid.UUID) (promotion.Record, error) {
-	row := s.db.QueryRowContext(ctx, get_by_user, uuid.Bytes())
+	return s.get(s.db.QueryRowContext(ctx, get_by_user, uuid.Bytes()))
+}
 
-	var res promotion.Record
-	if err := scan(&res, row); err != nil {
+func (s *SQLDB) get(row *sql.Row) (promotion.Record, error) {
+	var rec promotion.Record
+	if err := scan(&rec, row); err != nil {
 		if err == sql.ErrNoRows {
 			return promotion.Record{}, promotion.ErrNotFound
 		}
@@ -61,7 +75,7 @@ func (s *SQLDB) GetByUser(ctx context.Context, uuid uuid.UUID) (promotion.Record
 		return promotion.Record{}, store.ErrQuery.Cause(err).Make()
 	}
 
-	return res, nil
+	return rec, nil
 }
 
 func (s *SQLDB) Create(ctx context.Context, req promotion.CreateRecord) error {
@@ -107,29 +121,26 @@ func (s *SQLDB) RunTx(ctx context.Context, proc func(promotion.Store) error) err
 	return err
 }
 
-func scan(ent *promotion.Record, scanner interface{ Scan(...any) error }) error {
+func scan(ent *promotion.Record, scanner store.Scanner) error {
 	var bytes1, bytes2 []byte
 
 	if err := scanner.Scan(&bytes1, &bytes2, &ent.Expires); err != nil {
 		return err
 	}
 
-	err := problem.Join(
-		entity.Set(&ent.UUID, bytes1, uuid.FromBytes),
-		entity.Set(&ent.User, bytes2, uuid.FromBytes),
+	return problem.Join(
+		service.Set(&ent.UUID, bytes1, uuid.FromBytes),
+		service.Set(&ent.User, bytes2, uuid.FromBytes),
 	)
-	if err != nil {
-		return store.ErrQuery.Cause(err).Make()
-	}
-
-	return nil
 }
 
 const (
-	get            = `select uuid, user, expires from Promotions where uuid = ?`
-	get_by_user    = `select uuid, user, expires from Promotions where user = ?`
+	list        = `select uuid, user, expires from Promotions where uuid = ?`
+	get         = list + ` where uuid = ?`
+	get_by_user = list + ` where user = ?`
+
 	create         = `insert into Promotions (uuid, user, expires) values (?, ?, ?)`
 	update         = `update Promotions set expires = ? where uuid = ?`
 	delete         = `delete from Promotions where uuid = ?`
-	delete_expired = `delete from Promotions where expires < ?`
+	delete_expired = `delete from Promotions where expires <= ?`
 )

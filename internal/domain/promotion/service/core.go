@@ -109,6 +109,24 @@ func (c *Core) Delete(ctx context.Context, uuid uuid.UUID) error {
 	return c.Promotions.Delete(ctx, uuid)
 }
 
+func (c *Core) Publish(ctx context.Context) error {
+	err := c.Promotions.DeleteExpired(ctx, time.Now())
+	if err != nil {
+		return err
+	}
+
+	recs, err := c.Promotions.List(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, rec := range recs {
+		c.flush_at(rec.Expires)
+	}
+
+	return nil
+}
+
 func (c *Core) flush_at(expires time.Time) {
 	c.Scheduler.Post(func() {
 		c.Promotions.DeleteExpired(context.TODO(), expires)

@@ -12,6 +12,10 @@ type DBTx interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
+type Scanner interface {
+	Scan(...any) error
+}
+
 func WithTx(ctx context.Context, dbtx DBTx, proc func(DBTx) error) error {
 	db, ok := dbtx.(*sql.DB)
 	if !ok {

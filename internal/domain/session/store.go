@@ -8,6 +8,8 @@ import (
 )
 
 type Store interface {
+	List(context.Context) ([]Record, error)
+
 	Get(context.Context, uuid.UUID) (Record, error)
 	GetByUser(context.Context, uuid.UUID) (Record, error)
 

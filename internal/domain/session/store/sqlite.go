@@ -9,6 +9,7 @@ import (
 	"github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/internal/support/store"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+
 	"github.com/alan-b-lima/pkg/problem"
 )
 
@@ -21,12 +22,10 @@ create table if not exists Sessions (
 	created datetime not null,
 
 	foreign key (user) references Users(uuid)
-)
-`
+);`
 
 const Indexes = `
-create index if not exists Sessions_user on Sessions(user)
-`
+create index if not exists Sessions_user on Sessions(user);`
 
 type SQLDB struct {
 	db store.DBTx
@@ -38,42 +37,47 @@ func New(db store.DBTx) *SQLDB {
 	return &SQLDB{db: db}
 }
 
-func (s *SQLDB) Get(ctx context.Context, uuid uuid.UUID) (session.Record, error) {
-	res := s.db.QueryRowContext(ctx, get, uuid.Bytes())
-
-	var r session.Record
-
-	if ok, err := scan(&r, res); err != nil {
-		if ok {
-			return session.Record{}, err
-		}
-
-		if err == sql.ErrNoRows {
-			return session.Record{}, session.ErrNotFound
-		}
-		return session.Record{}, store.ErrQuery.Cause(err).Make()
+func (s *SQLDB) List(ctx context.Context) ([]session.Record, error) {
+	rows, err := s.db.QueryContext(ctx, list)
+	if err != nil {
+		return nil, store.ErrQuery.Cause(err).Make()
 	}
 
-	return r, nil
+	var recs []session.Record
+	for rows.Next() {
+		var rec session.Record
+		if err := scan(&rec, rows); err != nil {
+			return nil, store.ErrQuery.Cause(err).Make()
+		}
+
+		recs = append(recs, rec)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, store.ErrQuery.Cause(err).Make()
+	}
+
+	return recs, nil
+}
+
+func (s *SQLDB) Get(ctx context.Context, uuid uuid.UUID) (session.Record, error) {
+	return s.get(s.db.QueryRowContext(ctx, get, uuid.Bytes()))
 }
 
 func (s *SQLDB) GetByUser(ctx context.Context, user uuid.UUID) (session.Record, error) {
-	res := s.db.QueryRowContext(ctx, get_by_user, user.Bytes())
+	return s.get(s.db.QueryRowContext(ctx, get_by_user, user.Bytes()))
+}
 
-	var r session.Record
-
-	if ok, err := scan(&r, res); err != nil {
-		if ok {
-			return session.Record{}, err
-		}
-
+func (s *SQLDB) get(row *sql.Row) (session.Record, error) {
+	var rec session.Record
+	if err := scan(&rec, row); err != nil {
 		if err == sql.ErrNoRows {
 			return session.Record{}, session.ErrNotFound
 		}
+
 		return session.Record{}, store.ErrQuery.Cause(err).Make()
 	}
 
-	return r, nil
+	return rec, nil
 }
 
 func (s *SQLDB) Create(ctx context.Context, rec session.CreateRecord) error {
@@ -86,9 +90,14 @@ func (s *SQLDB) Create(ctx context.Context, rec session.CreateRecord) error {
 }
 
 func (s *SQLDB) Update(ctx context.Context, uuid uuid.UUID, rec session.UpdateRecord) error {
-	_, err := s.db.ExecContext(ctx, update, rec.Renewed, rec.Expires, uuid.Bytes())
+	res, err := s.db.ExecContext(ctx, update, rec.Renewed, rec.Expires, uuid.Bytes())
 	if err != nil {
 		return store.ErrExec.Cause(err).Make()
+	}
+
+	changed, err := res.RowsAffected()
+	if err == nil && changed == 0 {
+		return session.ErrNotFound
 	}
 
 	return nil
@@ -118,27 +127,24 @@ func (s *SQLDB) RunTx(ctx context.Context, proc func(session.Store) error) error
 	})
 }
 
-func scan(ent *session.Record, scanner interface{ Scan(...any) error }) (bool, error) {
+func scan(ent *session.Record, scanner store.Scanner) error {
 	var bytes1, bytes2 []byte
 
 	if err := scanner.Scan(&bytes1, &bytes2, &ent.Renewed, &ent.Expires, &ent.Created); err != nil {
-		return false, err
+		return err
 	}
 
-	err := problem.Join(
+	return problem.Join(
 		service.Set(&ent.UUID, bytes1, uuid.FromBytes),
 		service.Set(&ent.User, bytes2, uuid.FromBytes),
 	)
-	if err != nil {
-		return true, err
-	}
-
-	return true, nil
 }
 
 const (
-	get            = `select uuid, user, renewed, expires, created from Sessions where uuid = ?`
-	get_by_user    = `select uuid, user, renewed, expires, created from Sessions where user = ?`
+	list        = `select uuid, user, renewed, expires, created from Sessions`
+	get         = list + ` where uuid = ?`
+	get_by_user = list + ` where user = ?`
+
 	create         = `insert into Sessions (uuid, user, renewed, expires, created) values (?, ?, ?, ?, ?)`
 	update         = `update Sessions set renewed = ?, expires = ? where uuid = ?`
 	delete         = `delete from Sessions where uuid = ?`

@@ -123,8 +123,26 @@ func (c *Core) Delete(ctx context.Context, uuid uuid.UUID) error {
 	return c.Sessions.Delete(ctx, uuid)
 }
 
+func (c *Core) Publish(ctx context.Context) error {
+	err := c.Sessions.DeleteExpired(ctx, time.Now())
+	if err != nil {
+		return err
+	}
+
+	recs, err := c.Sessions.List(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, rec := range recs {
+		c.flush_at(rec.Expires)
+	}
+
+	return nil
+}
+
 func (c *Core) flush_at(expires time.Time) {
 	c.Scheduler.Post(func() {
-		c.Sessions.DeleteExpired(context.TODO(), time.Now())
+		c.Sessions.DeleteExpired(context.TODO(), expires)
 	}, expires)
 }
