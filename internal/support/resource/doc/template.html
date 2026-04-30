@@ -1,0 +1,31 @@
+{{ define "main" }}
+<aside>
+    <ul class="end-point-ref">
+        {{ range .EndPoints }}
+        <li>
+            <a class="route" href="#{{ .RouteID }}">
+                <h2 class="method {{ .Method | lower }}">{{ .Method }}</h2>
+                <span class="path">{{ .Path }}</span>
+            </a>
+        </li>
+        {{ end }}
+    </ul>
+</aside>
+
+<section class="end-point-list">
+    <h2 class="title">{{ .Title }}</h2>
+
+    {{ range .EndPoints }}
+    <section class="end-point" id="{{ .RouteID }}">
+        <div class="route">
+            <h2 class="method {{ .Method | lower }}">{{ .Method }}</h2>
+            <span class="path">{{ .Path }}</span>
+        </div>
+        <div class="body">
+            <h3 class="brief">{{ .Header }}</h3>
+            <div class="content">{{ range .Body }}<p>{{ . }}</p>{{end}}</div>
+        </div>
+    </section>
+    {{ end }}
+</section>
+{{ end }}
