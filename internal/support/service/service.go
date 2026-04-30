@@ -18,15 +18,7 @@ func AuthorizeFromContext(ctx context.Context, gate auth.Authenticator, perms rb
 		return auth.NewUnlogged(), err
 	}
 
-	if err := Authorize(perms, actor); err != nil {
-		if actor.Role == auth.Unlogged {
-			return actor, auth.ErrUnauthenticated.Make()
-		}
-
-		return actor, err
-	}
-
-	return actor, nil
+	return actor, Authorize(perms, actor)
 }
 
 func ActorFromContext(ctx context.Context, gate auth.Authenticator) (auth.Actor, error) {
@@ -37,11 +29,11 @@ func ActorFromContext(ctx context.Context, gate auth.Authenticator) (auth.Actor,
 
 	actor, err := gate.Actor(ctx, session)
 	if err != nil {
-		if err, ok := errors.AsType[*problem.Error](err); ok && err.IsExternal() {
-			return auth.NewUnlogged(), auth.ErrUnauthenticated.Cause(err).Make()
+		if err, ok := errors.AsType[*problem.Error](err); ok && err.IsInternal() {
+			return auth.Actor{}, err
 		}
 
-		return auth.NewUnlogged(), err
+		return auth.NewUnlogged(), nil
 	}
 
 	return actor, nil
