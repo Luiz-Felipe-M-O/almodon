@@ -23,7 +23,7 @@ func NewGate(service user.Service, gate auth.Authenticator) user.Service {
 
 var (
 	perm_chief = auth.Allow(auth.Chief)
-	perm_user  = auth.Allow(auth.User)
+	perm_all   = auth.Allow(auth.Unlogged)
 )
 
 func (c *Gate) List(ctx context.Context) ([]user.Result, error) {
@@ -69,7 +69,7 @@ Do:
 }
 
 func (c *Gate) Me(ctx context.Context) (user.Result, error) {
-	actor, err := service.AuthorizeFromContext(ctx, c.Gate, perm_user)
+	actor, err := service.AuthorizeFromContext(ctx, c.Gate, perm_all)
 	if err != nil {
 		return user.Result{}, err
 	}
