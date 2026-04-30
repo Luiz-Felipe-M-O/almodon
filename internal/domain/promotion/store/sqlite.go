@@ -135,7 +135,7 @@ func scan(ent *promotion.Record, scanner store.Scanner) error {
 }
 
 const (
-	list        = `select uuid, user, expires from Promotions where uuid = ?`
+	list        = `select uuid, user, expires from Promotions`
 	get         = list + ` where uuid = ?`
 	get_by_user = list + ` where user = ?`
 
