@@ -28,7 +28,7 @@
     --color: oklch(57% 0.15 274);
     --color-error: oklch(50% 0.26 20);
 
-    --color-primary-5: oklch(from var(--color) 5% 0.01 h);
+    --color-primary-0: oklch(from var(--color) 0% 0.01 h);
     --color-primary-25: oklch(from var(--color) 25% 0.01 h);
     --color-primary-50: oklch(from var(--color) 50% 0.01 h);
     --color-primary-60: oklch(from var(--color) 60% 0.01 h);
@@ -64,7 +64,7 @@
 #almodon {
     & {
         background-color: var(--color-primary-100);
-        color: var(--color-primary-5);
+        color: var(--color-primary-0);
         font-family: var(--font-default);
         font-size: 1rem;
         color-scheme: light;
@@ -78,6 +78,10 @@
     ul,
     ol {
         list-style: none;
+    }
+
+    select {
+        appearance: none;
     }
 
     img {
@@ -95,7 +99,7 @@
 #almodon .box {
     border-radius: 1rem;
     padding: 1rem;
-    border: var(--border) var(--color-primary-5);
+    border: var(--border) var(--color-primary-0);
 }
 
 #almodon .button {
@@ -136,7 +140,7 @@
             & {
                 background-color: var(--color-primary-100);
                 border-color: var(--color-primary-25);
-                color: var(--color-primary-5);
+                color: var(--color-primary-0);
             }
 
             &:is(:hover, :focus-visible, .highlighted) {
@@ -152,7 +156,7 @@
         &.seamless {
             & {
                 background-color: var(--color-primary-95);
-                color: var(--color-primary-5);
+                color: var(--color-primary-0);
                 border-color: transparent;
             }
 
@@ -252,7 +256,7 @@
 
         &:not(.disabled) {
             & {
-                color: var(--color-primary-5);
+                color: var(--color-primary-0);
             }
 
             .input {
