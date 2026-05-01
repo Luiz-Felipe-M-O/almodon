@@ -6,12 +6,6 @@ import (
 )
 
 func GetHandler[TRes any](ctx context.Context, proc func(context.Context) (TRes, error), w http.ResponseWriter, r *http.Request) {
-	ctx, err := Session(ctx, r)
-	if err != nil {
-		WriteError(w, err)
-		return
-	}
-
 	res, err := proc(ctx)
 	if err != nil {
 		WriteError(w, err)
@@ -25,12 +19,6 @@ func GetHandler[TRes any](ctx context.Context, proc func(context.Context) (TRes,
 }
 
 func PostHandler[TRes, TReq any](ctx context.Context, proc func(context.Context, TReq) (TRes, error), w http.ResponseWriter, r *http.Request) {
-	ctx, err := Session(ctx, r)
-	if err != nil {
-		WriteError(w, err)
-		return
-	}
-
 	var req TReq
 	if err := DecodeJSON(&req, r); err != nil {
 		WriteError(w, err)
@@ -50,12 +38,6 @@ func PostHandler[TRes, TReq any](ctx context.Context, proc func(context.Context,
 }
 
 func PutHandler[TReq any](ctx context.Context, proc func(context.Context, TReq) error, w http.ResponseWriter, r *http.Request) {
-	ctx, err := Session(ctx, r)
-	if err != nil {
-		WriteError(w, err)
-		return
-	}
-
 	var req TReq
 	if err := DecodeJSON(&req, r); err != nil {
 		WriteError(w, err)
@@ -71,12 +53,6 @@ func PutHandler[TReq any](ctx context.Context, proc func(context.Context, TReq) 
 }
 
 func DeleteHandler(ctx context.Context, proc func(context.Context) error, w http.ResponseWriter, r *http.Request) {
-	ctx, err := Session(ctx, r)
-	if err != nil {
-		WriteError(w, err)
-		return
-	}
-
 	if err := proc(ctx); err != nil {
 		WriteError(w, err)
 		return
