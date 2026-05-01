@@ -20,21 +20,22 @@ import (
 
 type Doc struct {
 	Title     string
+	Path      string
 	EndPoints []EndPoint
 
-	bytes []byte
+	buf bytes.Reader
 }
 
 var ErrDocNotFound = errors.New("resource doc not found")
 
 func New(title string, r io.Reader) (*Doc, error) {
-	resource, err := resource(r)
+	pkg, rc, err := resource(r)
 	if err != nil {
 		return nil, err
 	}
 
 	var eps []EndPoint
-	for _, m := range resource.Methods {
+	for _, m := range rc.Methods {
 		ep, ok := NewEndPoint(m.Doc)
 		if !ok {
 			continue
@@ -49,47 +50,28 @@ func New(title string, r io.Reader) (*Doc, error) {
 
 	doc := Doc{
 		Title:     title,
+		Path:      pkg,
 		EndPoints: eps,
 	}
 
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, doc); err != nil {
+	if err := doc_tmpl.Execute(&buf, doc); err != nil {
 		return nil, err
 	}
 
-	doc.bytes = buf.Bytes()
+	doc.buf = *bytes.NewReader(buf.Bytes())
 	return &doc, nil
 }
 
 func (d *Doc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	http.ServeContent(w, r, "doc.html", time.Time{}, d.ReadSeeker())
+	http.ServeContent(w, r, ".html", time.Time{}, &d.buf)
 }
 
-func (d *Doc) ReadSeeker() io.ReadSeeker {
-	return bytes.NewReader(d.bytes)
-}
-
-var tmpl = template.Must(parse_chain(
-	web.DefaultTemplate().Funcs(template.FuncMap{"lower": strings.ToLower}),
+var doc_tmpl = template.Must(web.ParseChain(
+	web.Base().Funcs(template.FuncMap{"lower": strings.ToLower}),
 	`{{ define "head" }}<link rel="stylesheet" href="/toolkit/style/doc.css">{{ end }}`,
-	doc_text,
+	web.MustText("doc/doc"),
 ))
-
-//go:embed template.html
-var doc_text string
-
-func parse_chain(tmpl *template.Template, texts ...string) (*template.Template, error) {
-	for _, text := range texts {
-		var err error
-
-		tmpl, err = tmpl.Parse(text)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return tmpl, nil
-}
 
 var methods = map[string]int{
 	"GET":    1,
@@ -99,17 +81,17 @@ var methods = map[string]int{
 	"DELETE": 5,
 }
 
-func resource(r io.Reader) (*doc.Type, error) {
+func resource(r io.Reader) (string, *doc.Type, error) {
 	fset := token.NewFileSet()
 
 	file, err := parser.ParseFile(fset, "http.go", r, parser.ParseComments)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	d, err := doc.NewFromFiles(fset, []*ast.File{file}, "")
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	var rc *doc.Type
@@ -120,8 +102,8 @@ func resource(r io.Reader) (*doc.Type, error) {
 		}
 	}
 	if rc == nil {
-		return nil, ErrDocNotFound
+		return "", nil, ErrDocNotFound
 	}
 
-	return rc, nil
+	return d.Name, rc, nil
 }
