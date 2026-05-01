@@ -1,106 +1,169 @@
 #almodon main {
     & {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        overflow: hidden;
-        gap: 2rem;
+        padding: 1rem 2rem;
     }
 
-    .route {
+    &#end-point {
         & {
-            display: flex;
-            align-items: center;
-            font-family: var(--font-monospace);
-            line-height: 1;
-            gap: 1ch;
+            grid-template-columns: auto 1fr;
+            overflow: hidden;
+            gap: 2rem;
         }
 
-        .method {
+        .route {
             & {
-                --method-color: oklch(.70 0.1 178);
+                display: flex;
+                align-items: center;
+                font-family: var(--font-monospace);
+                line-height: 1;
+                gap: 1ch;
+            }
 
-                border-radius: 10rem;
-                text-transform: uppercase;
-                font-weight: bold;
-                padding: .25rem .5rem .125rem .5rem;
+            .method {
+                & {
+                    --method-color: oklch(.70 0.1 178);
+
+                    border-radius: 10rem;
+                    text-transform: uppercase;
+                    font-weight: bold;
+                    padding: .25rem .5rem .125rem .5rem;
+                    font-size: .75rem;
+
+                    background-color: oklch(from var(--method-color) .75 C H);
+                    border: 1px solid oklch(from var(--method-color) .40 C H);
+                    color: oklch(from var(--method-color) .40 C H);
+                }
+
+                &.get {
+                    --method-color: oklch(.40 0.1 178);
+                }
+
+                &.post {
+                    --method-color: oklch(.40 0.1 230);
+                }
+
+                &.patch {
+                    --method-color: oklch(.40 0.1 98);
+                }
+
+                &.put {
+                    --method-color: oklch(.40 0.1 278);
+                }
+
+                &.delete {
+                    --method-color: oklch(.40 0.1 17);
+                }
+            }
+
+            .path {
+                line-height: 1;
+            }
+        }
+
+        .end-point-ref {
+            & {
+                display: flex;
+                flex-direction: column;
+                border-radius: var(--radius-round);
+                border: var(--border) var(--color-primary-75);
+                margin: 1rem 0 1rem 1rem;
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .route .path {
                 font-size: .75rem;
-
-                background-color: oklch(from var(--method-color) .75 C H);
-                border: 1px solid oklch(from var(--method-color) .40 C H);
-                color: oklch(from var(--method-color) .40 C H);
-            }
-
-            &.get {
-                --method-color: oklch(.40 0.1 178);
-            }
-
-            &.post {
-                --method-color: oklch(.40 0.1 230);
-            }
-
-            &.patch {
-                --method-color: oklch(.40 0.1 98);
-            }
-
-            &.put {
-                --method-color: oklch(.40 0.1 278);
-            }
-
-            &.delete {
-                --method-color: oklch(.40 0.1 17);
             }
         }
 
-        .path {
-            line-height: 1;
-        }
-    }
+        .end-point-list {
+            & {
+                display: flex;
+                flex-direction: column;
+                padding: 1rem 2rem 1rem 0;
+                overflow: auto;
+                gap: 1rem;
+            }
 
-    .end-point-ref {
-        & {
-            display: flex;
-            flex-direction: column;
-            border-radius: var(--radius-round);
-            border: var(--border) var(--color-primary-75);
-            margin: 1rem 0 1rem 1rem;
-            padding: 1rem;
-            gap: 1rem;
-        }
+            .title {
+                font-size: 1.5rem;
+                font-weight: bold;
+            }
 
-        .route .path {
-            font-size: .75rem;
+            .end-point {
+                & {
+                    display: grid;
+                    grid-template-rows: auto 1fr;
+                }
+
+                .route {
+                    border-radius: var(--radius-round) var(--radius-round) 0 0;
+                    border: var(--border) var(--color-primary-75);
+                    padding: .5rem 1rem;
+                }
+
+                .body {
+                    padding: .5rem 1rem;
+
+                }
+            }
         }
     }
 
-    .end-point-list {
+    &#icons {
         & {
             display: flex;
             flex-direction: column;
-            padding: 1rem 2rem 1rem 0;
-            overflow: auto;
+        }
+
+        .icon-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, clamp(3rem, 100%, 10dvw));
+            justify-content: space-around;
             gap: 1rem;
         }
 
-        .title {
-            font-size: 1.5rem;
-            font-weight: bold;
+        .icon-box {
+            & {
+                border-radius: var(--radius-round);
+                border: var(--border) var(--color-primary-75);
+            }
+
+            .icon figure {
+                & {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: .5rem 1rem;
+                }
+
+                img {
+                    width: 1.5rem;
+                }
+            }
+
+            .context {
+                border-top: var(--border) var(--color-primary-75);
+                border-radius: 0 0 var(--radius-round) var(--radius-round);
+                background-color: var(--color-primary-100);
+            }
         }
 
-        .end-point {
+        &.empty {
             & {
                 display: grid;
-                grid-template-rows: auto 1fr;
+                place-items: center;
             }
 
-            .route {
-                border-radius: var(--radius-round) var(--radius-round) 0 0;
-                border: var(--border) var(--color-primary-75);
-                padding: .5rem 1rem;
+            .report {
+                display: grid;
+                justify-items: center;
+                font-weight: bold;
+                font-size: 1.25rem;
             }
 
-            .body {
-                padding: .5rem 1rem;
-
+            img {
+                width: 10rem;
             }
         }
     }
