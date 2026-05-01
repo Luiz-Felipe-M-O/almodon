@@ -1,0 +1,12 @@
+{{ define "main" }}
+<main id="reference">
+    <section class="reference-list">
+        <h2 class="title">{{ .Title }}</h2>
+        {{ range .Docs }}
+        <a class="reference" href="./{{ .Path }}">
+            <h2 class="domain">{{ .Title }}</h2>
+        </a>
+        {{ end }}
+    </section>
+</main>
+{{ end }}

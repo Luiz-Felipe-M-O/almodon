@@ -1,0 +1,25 @@
+{{ define "main" }}
+{{ with . }}
+<main id="icons">
+    <section class="icon-list">
+        {{ range . }}
+        <div class="icon-box">
+            <a class="icon" href="{{ .Src }}">
+                <figure>
+                    <img src="{{ .Src }}" alt="{{ .Name }}">
+                    <caption>{{ .Name }}</caption>
+                </figure>
+            </a>
+        </div>
+        {{ end }}
+    </section>
+</main>
+{{ else }}
+<main class="empty" id="icons">
+    <div class="report">
+        <img src="/toolkit/assets/icons/orders.svg" alt="Vazio">
+        <h2 class="message">Nenhum Icone Encontrado</h2>
+    </div>
+</main>
+{{ end }}
+{{ end }}

@@ -21,10 +21,10 @@
             <span class="text bold">Almodon</span>
         </a>
 
-        <nav>{{ block "nav" . }}{{ end }}</nav>
+        {{ block "nav" . }}<nav></nav>{{ end }}
     </header>
 
-    <main>{{ block "main" . }}{{ end }}</main>
+    {{ block "main" . }}<main></main>{{ end }}
 </body>
 
 </html>
