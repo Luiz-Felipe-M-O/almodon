@@ -1,10 +1,12 @@
 package auths
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
 	"github.com/alan-b-lima/almodon/internal/support/resource"
+	"github.com/alan-b-lima/almodon/internal/support/session"
 )
 
 type Resource struct {
@@ -31,38 +33,23 @@ func New(auth auth.Service) *Resource {
 }
 
 func (rc *Resource) Login(w http.ResponseWriter, r *http.Request) {
-	var req auth.Create
-	if err := resource.DecodeJSON(&req, r); err != nil {
-		resource.WriteError(w, err)
-		return
-	}
-
-	res, err := rc.Auth.Login(r.Context(), req.SIAPE, req.Password)
-	if err != nil {
-		resource.WriteError(w, err)
-		return
-	}
-
-	resource.SetSessionCookie(w, res.UUID, res.Expires)
-
-	if err := resource.EncodeJSON(&res, http.StatusCreated, w, r); err != nil {
-		resource.WriteError(w, err)
-		return
-	}
+	resource.PostHandler(r.Context(), func(ctx context.Context, req auth.Create) (auth.Result, error) {
+		return rc.Auth.Login(r.Context(), req.SIAPE, req.Password)
+	}, w, r)
 }
 
 func (rc *Resource) Logout(w http.ResponseWriter, r *http.Request) {
-	session, err := resource.SessionCookie(r)
-	if err != nil {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
+	resource.DeleteHandler(r.Context(), func(ctx context.Context) error {
+		s, err := session.Cookie(r)
+		if err != nil {
+			return nil
+		}
 
-	if err := rc.Auth.Logout(r.Context(), session); err != nil {
-		resource.WriteError(w, err)
-		return
-	}
+		if err := rc.Auth.Logout(r.Context(), s); err != nil {
+			return nil
+		}
 
-	resource.DeleteSessionCookie(w)
-	w.WriteHeader(http.StatusNoContent)
+		session.DeleteCookie(w)
+		return nil
+	}, w, r)
 }
