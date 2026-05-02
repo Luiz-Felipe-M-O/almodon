@@ -3,6 +3,8 @@ package user
 import (
 	"regexp"
 	"slices"
+	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
@@ -45,6 +47,8 @@ func ProcessName(name string) (string, error) {
 }
 
 func ProcessEmail(email string) (string, error) {
+	email = strings.TrimSpace(email)
+
 	if !re_email.MatchString(email) {
 		return "", ErrEmailInvalid
 	}
@@ -61,13 +65,11 @@ func ProcessPassword(password string) ([]byte, error) {
 		return nil, ErrPasswordTooLong
 	}
 
-	switch password[0] {
-	case ' ', '\t', '\n', '\r':
+	if unicode.IsSpace(rune(password[0])) {
 		return nil, ErrPasswordLeadOrTrailWhitespace
 	}
 
-	switch password[len(password)-1] {
-	case ' ', '\t', '\n', '\r':
+	if unicode.IsSpace(rune(password[len(password)-1])) {
 		return nil, ErrPasswordLeadOrTrailWhitespace
 	}
 
