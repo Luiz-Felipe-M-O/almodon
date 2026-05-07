@@ -34,7 +34,13 @@ func New(auth auth.Service) *Resource {
 
 func (rc *Resource) Login(w http.ResponseWriter, r *http.Request) {
 	resource.PostHandler(r.Context(), func(ctx context.Context, req auth.Create) (auth.Result, error) {
-		return rc.Auth.Login(r.Context(), req.SIAPE, req.Password)
+		res, err := rc.Auth.Login(r.Context(), req.SIAPE, req.Password)
+		if err != nil {
+			return auth.Result{}, err
+		}
+
+		session.SetCookie(w, res.UUID, res.Expires)
+		return res, nil
 	}, w, r)
 }
 

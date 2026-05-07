@@ -27,7 +27,7 @@ type (
 
 type (
 	Result struct {
-		UUID    uuid.UUID `json:"uuid"`
+		UUID    uuid.UUID `json:"-"`
 		User    uuid.UUID `json:"user"`
 		Expires time.Time `json:"expires"`
 	}
