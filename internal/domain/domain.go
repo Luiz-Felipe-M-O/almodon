@@ -93,7 +93,7 @@ func New(opts ...Option) (*Domain, error) {
 	var err error
 
 	defer func(err *error) {
-		if err != nil {
+		if *err != nil {
 			bundle.Close()
 		}
 	}(&err)
