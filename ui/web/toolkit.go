@@ -26,11 +26,10 @@ var (
 )
 
 func init() {
-	init_icons()
-
 	toolkit_mux_emb.Handle("/", http.FileServerFS(toolkit))
 	toolkit_mux_dyn.Handle("/", http.StripPrefix("/toolkit", http.FileServer(http.Dir("./ui/web/toolkit"))))
 
+	icon_handler := init_icons()
 	toolkit_mux_emb.HandleFunc("/toolkit/assets/icons/{$}", icon_handler)
 	toolkit_mux_dyn.HandleFunc("/toolkit/assets/icons/{$}", icon_handler)
 }
@@ -56,14 +55,12 @@ type icon struct {
 	Documented bool
 }
 
-var icon_handler http.HandlerFunc
-
 const (
 	icon_dir   = "toolkit/assets/icons"
 	icon_route = "/" + icon_dir
 )
 
-func init_icons() {
+func init_icons() http.HandlerFunc {
 	dir, err := toolkit.ReadDir(icon_dir)
 	if err != nil {
 		panic(err)
@@ -92,11 +89,7 @@ func init_icons() {
 		}
 	}
 
-	tmpl := template.Must(ParseChain(
-		Base(),
-		`{{ define "head" }}<link rel="stylesheet" href="/toolkit/style/doc.css">{{ end }}`,
-		MustText("toolkit/icons"),
-	))
+	tmpl := template.Must(Base().Parse(MustText("toolkit/icons")))
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, display); err != nil {
@@ -104,8 +97,9 @@ func init_icons() {
 	}
 
 	reader := bytes.NewReader(buf.Bytes())
+	now := time.Now()
 
-	icon_handler = func(w http.ResponseWriter, r *http.Request) {
-		http.ServeContent(w, r, ".html", time.Time{}, reader)
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.ServeContent(w, r, ".html", now, reader)
 	}
 }
