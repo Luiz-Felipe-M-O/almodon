@@ -31,9 +31,9 @@ func NewRef(title string, docs []*Doc) (*Ref, error) {
 
 	mux := http.NewServeMux()
 	for _, doc := range docs {
-		mux.Handle("/"+doc.Path, doc)
+		mux.Handle("/docs/"+doc.Path, doc)
 	}
-	mux.HandleFunc("/", ref.home)
+	mux.HandleFunc("/docs/", ref.home)
 
 	ref.mux = mux
 	ref.buf = *bytes.NewReader(buf.Bytes())
@@ -48,8 +48,8 @@ func (d *Ref) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	d.mux.ServeHTTP(w, r)
 }
 
-var ref_tmpl = template.Must(web.ParseChain(
-	web.Base().Funcs(template.FuncMap{"lower": strings.ToLower}),
-	`{{ define "head" }}<link rel="stylesheet" href="/toolkit/style/doc.css">{{ end }}`,
-	web.MustText("doc/ref"),
-))
+var ref_tmpl = template.Must(
+	web.Base().
+		Funcs(template.FuncMap{"lower": strings.ToLower}).
+		Parse(web.MustText("doc/ref")),
+)

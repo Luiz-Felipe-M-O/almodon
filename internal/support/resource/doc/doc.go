@@ -67,11 +67,11 @@ func (d *Doc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, ".html", time.Time{}, &d.buf)
 }
 
-var doc_tmpl = template.Must(web.ParseChain(
-	web.Base().Funcs(template.FuncMap{"lower": strings.ToLower}),
-	`{{ define "head" }}<link rel="stylesheet" href="/toolkit/style/doc.css">{{ end }}`,
-	web.MustText("doc/doc"),
-))
+var doc_tmpl = template.Must(
+	web.Base().
+		Funcs(template.FuncMap{"lower": strings.ToLower}).
+		Parse(web.MustText("doc/doc")),
+)
 
 var methods = map[string]int{
 	"GET":    1,
