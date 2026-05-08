@@ -1,6 +1,6 @@
-github.com/alan-b-lima/pkg v0.2.0 h1:2tq/w5uJ4Tp3lSxgDS/Hyk3JMZdprnEU9zDkoNs98EY=
-github.com/alan-b-lima/pkg v0.2.0/go.mod h1:TCiMDQU3a/IOj2z+fT+5y/AMtxoCwOICmJm7H/EO3Wg=
-github.com/mattn/go-sqlite3 v1.14.42 h1:MigqEP4ZmHw3aIdIT7T+9TLa90Z6smwcthx+Azv4Cgo=
-github.com/mattn/go-sqlite3 v1.14.42/go.mod h1:pjEuOr8IwzLJP2MfGeTb0A35jauH+C2kbHKBr7yXKVQ=
-golang.org/x/crypto v0.49.0 h1:+Ng2ULVvLHnJ/ZFEq4KdcDd/cfjrrjjNSXNzxg0Y4U4=
-golang.org/x/crypto v0.49.0/go.mod h1:ErX4dUh2UM+CFYiXZRTcMpEcN8b/1gxEuv3nODoYtCA=
+github.com/alan-b-lima/pkg v0.3.0 h1:Z4yVuBXt1YXCqywrPLaGFsbqmXPytdhezv8HxqPYN6A=
+github.com/alan-b-lima/pkg v0.3.0/go.mod h1:TCiMDQU3a/IOj2z+fT+5y/AMtxoCwOICmJm7H/EO3Wg=
+github.com/mattn/go-sqlite3 v1.14.44 h1:3VSe+xafpbzsLbdr2AWlAZk9yRHiBhTBakioXaCKTF8=
+github.com/mattn/go-sqlite3 v1.14.44/go.mod h1:pjEuOr8IwzLJP2MfGeTb0A35jauH+C2kbHKBr7yXKVQ=
+golang.org/x/crypto v0.50.0 h1:zO47/JPrL6vsNkINmLoo/PH1gcxpls50DNogFvB5ZGI=
+golang.org/x/crypto v0.50.0/go.mod h1:3muZ7vA7PBCE6xgPX7nkzzjiUq87kRItoJQM1Yo8S+Q=
