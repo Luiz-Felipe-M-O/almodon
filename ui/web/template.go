@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -45,6 +46,8 @@ func ParseChain(tmpl *template.Template, texts ...string) (*template.Template, e
 	return tmpl, nil
 }
 
+var exts = [...]string{".html", ".gohtml"}
+
 const pages_dir = "dist/pages"
 
 //go:embed dist/pages
@@ -59,6 +62,10 @@ func init() {
 	texts = make(map[string]string)
 
 	err := fs.WalkDir(pages, pages_dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if d.Name() != "." && strings.HasPrefix(d.Name(), ".") {
 			return nil
 		}
@@ -67,19 +74,29 @@ func init() {
 			return nil
 		}
 
+		ext := filepath.Ext(path)
+		if !slices.Contains(exts[:], ext) {
+			return nil
+		}
+
 		text, err := pages.ReadFile(path)
 		if err != nil {
 			return err
 		}
+		tmpl := string(text)
 
-		name := strings.TrimSuffix(strings.TrimPrefix(path, pages_dir+"/"), filepath.Ext(path))
+		name := strings.TrimSuffix(path[len(pages_dir)+1:], ext)
 
-		texts[name] = string(text)
+		if deindex, ok := strings.CutSuffix(name, "/index"); ok {
+			texts[deindex] = tmpl
+		}
+		texts[name] = tmpl
+
 		return nil
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	base = template.Must(template.New("almodon").Parse(MustText("base")))
+	base = template.Must(template.New("almodon").Parse(MustText("index")))
 }
