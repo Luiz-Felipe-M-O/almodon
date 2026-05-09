@@ -12,8 +12,17 @@ type DBTx interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
+type Txer interface {
+	Tx() DBTx
+}
+
 type Scanner interface {
 	Scan(...any) error
+}
+
+type txconn struct {
+	*sql.Tx
+	pool *sql.DB
 }
 
 func WithTx(ctx context.Context, dbtx DBTx, proc func(DBTx) error) error {
@@ -27,7 +36,7 @@ func WithTx(ctx context.Context, dbtx DBTx, proc func(DBTx) error) error {
 		return ErrTx.Cause(err).Make()
 	}
 
-	if err := proc(tx); err != nil {
+	if err := proc(&txconn{Tx: tx, pool: db}); err != nil {
 		if err := tx.Rollback(); err != nil {
 			return ErrTx.Cause(err).Make()
 		}
@@ -38,4 +47,27 @@ func WithTx(ctx context.Context, dbtx DBTx, proc func(DBTx) error) error {
 		return ErrTx.Cause(err).Make()
 	}
 	return nil
+}
+
+func JoinTx(txed any, joiner DBTx) (DBTx, error) {
+	txer, ok := txed.(Txer)
+	if !ok {
+		return nil, ErrNotExtendable
+	}
+
+	tx, ok := txer.Tx().(*txconn)
+	if !ok {
+		return nil, ErrNotTx
+	}
+
+	db, ok := joiner.(*sql.DB)
+	if !ok {
+		return nil, ErrNestedTx
+	}
+
+	if db != tx.pool {
+		return nil, ErrIllegalJoin
+	}
+
+	return tx, nil
 }
