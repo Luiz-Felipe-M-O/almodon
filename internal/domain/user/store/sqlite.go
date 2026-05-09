@@ -101,7 +101,7 @@ func (s *SQLDB) get(ctx context.Context, query string, args ...any) (user.Record
 	return ent, nil
 }
 
-func (s *SQLDB) Create(ctx context.Context, rec user.CreateRecord) error {
+func (s *SQLDB) Create(ctx context.Context, rec user.Entity) error {
 	_, err := s.db.ExecContext(ctx, create, rec.UUID.Bytes(), rec.SIAPE, rec.Name, rec.Email, rec.Password, rec.Role.String(), rec.Created, rec.Updated)
 	if err != nil {
 		return store.ErrExec.Cause(err).Make()
@@ -110,7 +110,7 @@ func (s *SQLDB) Create(ctx context.Context, rec user.CreateRecord) error {
 	return nil
 }
 
-func (s *SQLDB) Patch(ctx context.Context, uuid uuid.UUID, rec user.PatchRecord) error {
+func (s *SQLDB) Patch(ctx context.Context, uuid uuid.UUID, rec user.PatchEntity) error {
 	res, err := s.db.ExecContext(ctx, patch, store.NoneNil(rec.Name), store.NoneNil(rec.Email), rec.Updated, uuid.Bytes())
 	if err != nil {
 		return store.ErrExec.Cause(err).Make()
@@ -132,10 +132,23 @@ func (s *SQLDB) Delete(ctx context.Context, uuid uuid.UUID) error {
 	return nil
 }
 
+func (s *SQLDB) Tx() store.DBTx {
+	return s.db
+}
+
 func (s *SQLDB) RunTx(ctx context.Context, proc func(user.Store) error) error {
 	return store.WithTx(ctx, s.db, func(tx store.DBTx) error {
 		return proc(&SQLDB{db: tx})
 	})
+}
+
+func (s *SQLDB) JoinTx(other any) (user.Store, error) {
+	tx, err := store.JoinTx(other, s.db)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SQLDB{db: tx}, nil
 }
 
 func scan(scanner store.Scanner, ent *user.Record) error {

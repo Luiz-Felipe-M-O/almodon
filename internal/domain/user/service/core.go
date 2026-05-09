@@ -62,7 +62,7 @@ func (c *Core) Me(ctx context.Context) (user.Result, error) {
 }
 
 func (c *Core) Create(ctx context.Context, req user.Create) (user.CreateResult, error) {
-	var rec user.CreateRecord
+	var rec user.Entity
 	err := problem.Join(
 		service.Set(&rec.SIAPE, req.SIAPE, user.ProcessSIAPE),
 		service.Set(&rec.Name, req.Name, user.ProcessName),
@@ -84,7 +84,7 @@ func (c *Core) Create(ctx context.Context, req user.Create) (user.CreateResult, 
 }
 
 func (c *Core) Patch(ctx context.Context, uuid uuid.UUID, req user.Patch) error {
-	var rec user.PatchRecord
+	var rec user.PatchEntity
 	err := problem.Join(
 		service.SetOpt(&rec.Name, req.Name, user.ProcessName),
 		service.SetOpt(&rec.Email, req.Email, user.ProcessEmail),

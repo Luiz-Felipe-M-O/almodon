@@ -16,13 +16,14 @@ type Store interface {
 	Get(context.Context, uuid.UUID) (Record, error)
 	GetBySIAPE(context.Context, string) (Record, error)
 
-	Create(context.Context, CreateRecord) error
+	Create(context.Context, Entity) error
 
-	Patch(context.Context, uuid.UUID, PatchRecord) error
+	Patch(context.Context, uuid.UUID, PatchEntity) error
 
 	Delete(context.Context, uuid.UUID) error
 
 	RunTx(context.Context, func(Store) error) error
+	JoinTx(any) (Store, error)
 }
 
 type (
@@ -38,7 +39,7 @@ type (
 		Updated  time.Time
 	}
 
-	CreateRecord struct {
+	Entity struct {
 		UUID     uuid.UUID
 		SIAPE    string
 		Name     string
@@ -49,7 +50,7 @@ type (
 		Updated  time.Time
 	}
 
-	PatchRecord struct {
+	PatchEntity struct {
 		Name    opt.Opt[string]
 		Email   opt.Opt[string]
 		Updated time.Time
