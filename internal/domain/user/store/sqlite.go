@@ -9,6 +9,7 @@ import (
 	"github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/internal/support/store"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+
 	"github.com/alan-b-lima/pkg/problem"
 )
 
@@ -39,7 +40,7 @@ type SQLDB struct {
 
 var _ user.Store = (*SQLDB)(nil)
 
-func New(db store.DBTx) *SQLDB {
+func New(db *sql.DB) *SQLDB {
 	return &SQLDB{db: db}
 }
 
@@ -50,24 +51,20 @@ func (s *SQLDB) List(ctx context.Context) ([]user.Record, error) {
 	}
 	defer rows.Close()
 
-	var ents []user.Record
+	var recs []user.Record
 	for rows.Next() {
-		var ent user.Record
-		if ok, err := scan(&ent, rows); err != nil {
-			if ok {
-				return []user.Record{}, err
-			}
-
+		var rec user.Record
+		if err := scan(rows, &rec); err != nil {
 			return []user.Record{}, store.ErrQuery.Cause(err).Make()
 		}
 
-		ents = append(ents, ent)
+		recs = append(recs, rec)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, store.ErrQuery.Cause(err).Make()
 	}
 
-	return ents, nil
+	return recs, nil
 }
 
 func (s *SQLDB) CountChiefs(ctx context.Context) (int, error) {
@@ -93,14 +90,11 @@ func (s *SQLDB) get(ctx context.Context, query string, args ...any) (user.Record
 	row := s.db.QueryRowContext(ctx, query, args...)
 
 	var ent user.Record
-	if ok, err := scan(&ent, row); err != nil {
-		if ok {
-			return user.Record{}, err
-		}
-
+	if err := scan(row, &ent); err != nil {
 		if err == sql.ErrNoRows {
 			return user.Record{}, user.ErrNotFound
 		}
+
 		return user.Record{}, store.ErrQuery.Cause(err).Make()
 	}
 
@@ -112,14 +106,21 @@ func (s *SQLDB) Create(ctx context.Context, rec user.CreateRecord) error {
 	if err != nil {
 		return store.ErrExec.Cause(err).Make()
 	}
+
 	return nil
 }
 
 func (s *SQLDB) Patch(ctx context.Context, uuid uuid.UUID, rec user.PatchRecord) error {
-	_, err := s.db.ExecContext(ctx, patch, store.NoneNil(rec.Name), store.NoneNil(rec.Email), rec.Updated, uuid.Bytes())
+	res, err := s.db.ExecContext(ctx, patch, store.NoneNil(rec.Name), store.NoneNil(rec.Email), rec.Updated, uuid.Bytes())
 	if err != nil {
 		return store.ErrExec.Cause(err).Make()
 	}
+
+	changed, err := res.RowsAffected()
+	if err == nil && changed == 0 {
+		return user.ErrNotFound
+	}
+
 	return nil
 }
 
@@ -137,12 +138,22 @@ func (s *SQLDB) RunTx(ctx context.Context, proc func(user.Store) error) error {
 	})
 }
 
-func scan(ent *user.Record, scanner interface{ Scan(...any) error }) (bool, error) {
+func scan(scanner store.Scanner, ent *user.Record) error {
 	var bytes []byte
 	var string string
 
-	if err := scanner.Scan(&bytes, &ent.SIAPE, &ent.Name, &ent.Email, &ent.Password, &string, &ent.Logged, &ent.Created, &ent.Updated); err != nil {
-		return false, err
+	if err := scanner.Scan(
+		&bytes,
+		&ent.SIAPE,
+		&ent.Name,
+		&ent.Email,
+		&ent.Password,
+		&string,
+		&ent.Logged,
+		&ent.Created,
+		&ent.Updated,
+	); err != nil {
+		return err
 	}
 
 	err := problem.Join(
@@ -150,10 +161,10 @@ func scan(ent *user.Record, scanner interface{ Scan(...any) error }) (bool, erro
 		service.Set(&ent.Role, string, role_from_string),
 	)
 	if err != nil {
-		return true, store.ErrQuery.Cause(err).Make()
+		return err
 	}
 
-	return true, nil
+	return nil
 }
 
 func role_from_string(role string) (auth.Role, error) {
