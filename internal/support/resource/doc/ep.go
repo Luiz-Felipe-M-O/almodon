@@ -1,42 +1,140 @@
 package doc
 
-import "strings"
+import (
+	"go/doc/comment"
+	"html/template"
+	"io"
+	"slices"
+	"strings"
+)
 
 type EndPoint struct {
 	Method, Path string
-	Header       string
-	Body         []string
+	RouteID      string
+	Body         template.HTML
 }
 
-func NewEndPoint(doc string) (EndPoint, bool) {
-	lines := split_lines(doc)
-	if len(lines) == 0 {
-		return EndPoint{}, false
-	}
+func NewEndPoint(text string) (EndPoint, bool) {
+	var p comment.Parser
+	doc := p.Parse(text).Content
 
-	method, path, index := find_route(lines[1:])
+	method, path, index := find_route(doc)
 	if index < 0 {
 		return EndPoint{}, false
 	}
 
-	ep := EndPoint{
-		Method: method,
-		Path:   path,
-		Header: lines[0],
-		Body:   make([]string, 0, len(lines)-1),
+	doc = slices.Delete(doc, index, index+1)
+
+	var b strings.Builder
+	if err := parse_content(&b, doc); err != nil {
+		return EndPoint{}, false
 	}
 
-	copy(ep.Body[:index], lines[1:index+1])
-	copy(ep.Body[index:], lines[index+2:])
-
-	return ep, true
+	return EndPoint{
+		Method:  method,
+		Path:    path,
+		RouteID: route_id(method, path),
+		Body:    template.HTML(b.String()),
+	}, true
 }
 
-func (ep *EndPoint) RouteID() string {
+func parse_content(b *strings.Builder, doc []comment.Block) error {
+	for _, block := range doc {
+		switch block := block.(type) {
+		case *comment.Code:
+			if err := execute(b, `<pre><code>{{ . }}</code></pre>`, block.Text); err != nil {
+				return err
+			}
+
+		case *comment.Heading:
+			b.WriteString(`<h3>`)
+			if err := parse_text(b, block.Text); err != nil {
+				return err
+			}
+			b.WriteString(`</h3>`)
+
+		case *comment.Paragraph:
+			b.WriteString(`<p>`)
+			if err := parse_text(b, block.Text); err != nil {
+				return err
+			}
+			b.WriteString(`</p>`)
+
+		case *comment.List:
+			if err := parse_list(b, block); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func parse_text(b *strings.Builder, text []comment.Text) error {
+	for _, text := range text {
+		switch text := text.(type) {
+		case comment.Plain:
+			b.WriteString(string(text))
+
+		case comment.Italic:
+			if err := execute(b, `<em>{{ . }}</em>`, string(text)); err != nil {
+				return err
+			}
+
+		case *comment.Link:
+			if err := execute(b, `<a href="{{ . }}">`, text.URL); err != nil {
+				return err
+			}
+			if err := parse_text(b, text.Text); err != nil {
+				return err
+			}
+			b.WriteString(`</a>`)
+
+		case *comment.DocLink:
+			if err := parse_text(b, text.Text); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func parse_list(b *strings.Builder, list *comment.List) error {
+	if len(list.Items) == 0 {
+		return nil
+	}
+
+	ordered := list.Items[0].Number != ""
+
+	if ordered {
+		b.WriteString(`<ol>`)
+	} else {
+		b.WriteString(`<ul>`)
+	}
+
+	for _, item := range list.Items {
+		b.WriteString(`<li>`)
+		if err := parse_content(b, item.Content); err != nil {
+			return err
+		}
+		b.WriteString(`</li>`)
+	}
+
+	if ordered {
+		b.WriteString(`</ol>`)
+	} else {
+		b.WriteString(`</ul>`)
+	}
+
+	return nil
+}
+
+func route_id(method, path string) string {
 	var b strings.Builder
 
-	b.WriteString(strings.ToLower(ep.Method))
-	for _, rune := range ep.Path {
+	b.WriteString(strings.ToLower(method))
+	for _, rune := range path {
 		switch rune {
 		case ':', '{', '}':
 			// ignore
@@ -55,43 +153,32 @@ func (ep *EndPoint) RouteID() string {
 	return id
 }
 
-func split_lines(doc string) []string {
-	lines := strings.Split(doc, "\n")
-	final := lines[:0]
-
-	var b strings.Builder
-
-	for _, line := range lines {
-		if len(line) == 0 {
-			if b.Len() > 0 {
-				final = append(final, b.String())
-				b.Reset()
-			}
-
+func find_route(doc []comment.Block) (method, path string, index int) {
+	for i, block := range doc {
+		block, ok := block.(*comment.Code)
+		if !ok {
 			continue
 		}
 
-		if b.Len() > 0 {
-			b.WriteRune(' ')
+		line := block.Text
+		if index := strings.IndexRune(block.Text, '\n'); index >= 0 {
+			line = line[:index]
 		}
-		b.WriteString(line)
-	}
 
-	if b.Len() > 0 {
-		final = append(final, b.String())
-	}
-
-	return final
-}
-
-func find_route(doc []string) (method, path string, index int) {
-	for i, line := range doc {
-		if len(line) > 0 && line[0] == '\t' {
-			if method, path, ok := strings.Cut(line[1:], " "); ok {
-				return method, path, i
-			}
+		line = strings.TrimSpace(line)
+		if method, path, ok := strings.Cut(line, " "); ok {
+			return method, path, i
 		}
 	}
 
 	return "", "", -1
+}
+
+func execute(w io.Writer, text string, data any) error {
+	tmpl, err := template.New("").Parse(text)
+	if err != nil {
+		return err
+	}
+
+	return tmpl.Execute(w, data)
 }

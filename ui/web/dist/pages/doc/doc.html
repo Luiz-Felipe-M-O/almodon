@@ -1,9 +1,9 @@
 {{ define "head" }}<link rel="stylesheet" href="/toolkit/style/doc.css">{{ end }}
 
 {{ define "main" }}
-<main class="#end-point">
+<main id="end-points">
     <aside>
-        <ul class="end-point-ref">
+        <ul>
             {{ range .EndPoints }}
             <li>
                 <a class="route" href="#{{ .RouteID }}">
@@ -15,19 +15,15 @@
         </ul>
     </aside>
 
-    <section class="end-point-list">
+    <section class="main">
         <h2 class="title">{{ .Title }}</h2>
-
         {{ range .EndPoints }}
         <section class="end-point" id="{{ .RouteID }}">
             <div class="route">
-                <h2 class="method {{ lower .Method }}">{{ .Method }}</h2>
+                <h3 class="method {{ lower .Method }}">{{ .Method }}</h3>
                 <span class="path">{{ .Path }}</span>
             </div>
-            <div class="body">
-                <h3 class="brief">{{ .Header }}</h3>
-                <div class="content">{{ range .Body }}<p>{{ . }}</p>{{end}}</div>
-            </div>
+            <div class="content">{{ .Body }}</div>
         </section>
         {{ end }}
     </section>
