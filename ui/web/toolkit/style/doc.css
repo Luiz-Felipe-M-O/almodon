@@ -1,5 +1,90 @@
+#almodon #reference main {
+    & {
+        display: flex;
+        flex-direction: column;
+        background-color: var(--color-primary-100);
+        padding: 1rem 2rem;
+        overflow: auto;
+        gap: 1rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    menu {
+        & {
+            display: flex;
+            flex-direction: column;
+            background-color: var(--color-primary-97);
+            border: var(--border) var(--color-primary-75);
+            border-radius: var(--radius-round);
+            padding: 1rem 2rem;
+            width: 100%;
+        }
+
+        li:not(:last-of-type)::after {
+            content: "";
+            display: block;
+            background-color: var(--color-primary-75);
+            width: 100%;
+            height: 1px;
+            margin: 1rem 0;
+            gap: 1rem;
+        }
+
+        details::details-content {
+            height: 0;
+            overflow: hidden;
+            transition: var(--transition) allow-discrete;
+        }
+
+        details[open]::details-content {
+            height: auto;
+        }
+
+        .reference {
+            & {
+                text-decoration: underline;
+                transition: var(--transition);
+            }
+
+            h3 {
+                display: inline;
+            }
+
+            span {
+                font-family: var(--font-monospace);
+            }
+        }
+
+        .content {
+            background-color: var(--color-primary-100);
+            border: var(--border) var(--color-primary-75);
+            border-radius: var(--radius-round);
+            margin-top: 1rem;
+            padding: .5rem 1rem;
+        }
+    }
+
+    .empty {
+        height: stretch;
+    }
+}
+
 #almodon #end-points {
     & {
+        background-color: var(--color-primary-97);
+    }
+
+    nav {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    main {
         display: grid;
         grid-template-columns: auto 1fr;
         overflow: hidden;
@@ -60,7 +145,7 @@
             padding: 1rem;
         }
 
-        ul {
+        menu {
             & {
                 display: flex;
                 flex-direction: column;
@@ -69,7 +154,6 @@
                 padding: 1rem;
                 gap: 1rem;
             }
-
 
             .route {
                 & {
@@ -83,7 +167,7 @@
                 }
 
                 &:active {
-                    color: var(--color-accent-50);
+                    color: var(--color-accent-60);
                 }
 
                 .method {
@@ -94,7 +178,6 @@
                     color: inherit;
                 }
 
-
                 .path {
                     font-size: .75rem;
                 }
@@ -104,7 +187,7 @@
 
     }
 
-    .main {
+    #section {
         & {
             display: flex;
             flex-direction: column;
@@ -144,56 +227,9 @@
                 }
             }
         }
-
-        .content {
-            & {
-                display: flex;
-                flex-direction: column;
-                gap: .5rem;
-            }
-
-            em {
-                font-style: italic;
-            }
-
-            pre {
-                tab-size: 4ch;
-                font-size: small;
-                font-family: var(--font-monospace);
-                background-color: var(--color-primary-95);
-                border: var(--border) var(--color-primary-75);
-                border-radius: var(--radius-square);
-                padding: .25rem 1rem;
-            }
-
-            ol {
-                list-style: armenian;
-            }
-
-            ul {
-                list-style: circle;
-                margin-inline-start: 2rem;
-            }
-
-            a {
-                & {
-                    text-decoration: underline;
-                    color: var(--color-accent-50);
-                    transition: var(--transition);
-                }
-
-                &:is(:hover, :focus-visible) {
-                    color: var(--color-accent-70);
-                }
-
-                &:active {
-                    color: var(--color-accent-80);
-                }
-            }
-        }
     }
 
-    @media screen and (max-width: 1000px) {
+    @media screen and (max-width: 900px) {
         aside {
             & {
                 position: absolute;
@@ -202,11 +238,11 @@
                 transition: var(--transition);
             }
 
-            &:hover {
+            &:focus-within {
                 translate: 0 0;
             }
 
-            ul {
+            menu {
                 background-color: var(--color-primary-97);
             }
         }
@@ -214,6 +250,53 @@
         .main {
             border: none;
             border-radius: 0;
+        }
+    }
+}
+
+#almodon :is(#reference, #end-points) .content {
+    & {
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+    }
+
+    em {
+        font-style: italic;
+    }
+
+    pre {
+        tab-size: 4ch;
+        font-size: small;
+        font-family: var(--font-monospace);
+        background-color: var(--color-primary-95);
+        border: var(--border) var(--color-primary-75);
+        border-radius: var(--radius-square);
+        padding: .25rem 1rem;
+    }
+
+    ol {
+        list-style: armenian;
+    }
+
+    ul {
+        list-style: circle;
+        margin-inline-start: 2rem;
+    }
+
+    a {
+        & {
+            text-decoration: underline;
+            color: var(--color-accent-50);
+            transition: var(--transition);
+        }
+
+        &:is(:hover, :focus-visible) {
+            color: var(--color-accent-70);
+        }
+
+        &:active {
+            color: var(--color-accent-80);
         }
     }
 }
@@ -258,21 +341,7 @@
         }
     }
 
-    &.empty {
-        & {
-            display: grid;
-            place-items: center;
-        }
-
-        .report {
-            display: grid;
-            justify-items: center;
-            font-weight: bold;
-            font-size: 1.25rem;
-        }
-
-        img {
-            width: 10rem;
-        }
+    .empty {
+        height: 100%;
     }
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"go/ast"
 	"go/doc"
+	"go/doc/comment"
 	"go/parser"
 	"go/token"
 	"html/template"
@@ -21,6 +22,7 @@ import (
 type Doc struct {
 	Title     string
 	Path      string
+	Descript  template.HTML
 	EndPoints []EndPoint
 
 	buf bytes.Reader
@@ -34,6 +36,14 @@ func New(title string, r io.Reader) (*Doc, error) {
 		return nil, err
 	}
 
+	var p comment.Parser
+	var b strings.Builder
+
+	if err := parse_content(&b, p.Parse(rc.Doc).Content); err != nil {
+		return nil, err
+	}
+	root := template.HTML(b.String())
+
 	var eps []EndPoint
 	for _, m := range rc.Methods {
 		ep, ok := NewEndPoint(m.Doc)
@@ -43,6 +53,9 @@ func New(title string, r io.Reader) (*Doc, error) {
 
 		eps = append(eps, ep)
 	}
+	if len(eps) == 0 {
+		return nil, ErrDocNotFound
+	}
 
 	slices.SortFunc(eps, func(a, b EndPoint) int {
 		return methods[a.Method] - methods[b.Method]
@@ -51,6 +64,7 @@ func New(title string, r io.Reader) (*Doc, error) {
 	doc := Doc{
 		Title:     title,
 		Path:      pkg,
+		Descript:  root,
 		EndPoints: eps,
 	}
 

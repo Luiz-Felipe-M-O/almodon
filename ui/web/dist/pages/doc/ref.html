@@ -1,14 +1,30 @@
-{{ define "head" }}<link rel="stylesheet" href="/toolkit/style/doc.css">{{ end }}
+{{ define "head" }}
+<link rel="stylesheet" href="/toolkit/style/doc.css">{{ end }}
+
+{{ define "body-id" }}reference{{ end }}
 
 {{ define "main" }}
-<main id="reference">
-    <section class="reference-list">
-        <h2 class="title">{{ .Title }}</h2>
-        {{ range .Docs }}
-        <a class="reference" href="./{{ .Path }}">
-            <h2 class="domain">{{ .Title }}</h2>
-        </a>
+<main>
+    <h2 class="title">{{ .Title }}</h2>
+    {{ with .Docs }}
+    <menu>
+        {{ range . }}
+        <li>
+            <details>
+                <summary>
+                    <a class="reference" href="{{ printf `./%s` .Path }}">
+                        <h3 class="domain">{{ .Title }}</h3>
+                        <span>{{ printf `/%s/` .Path }}</span>
+                    </a>
+                </summary>
+
+                <div class="content">{{ .Descript }}</div>
+            </details>
+        </li>
         {{ end }}
-    </section>
+    </menu>
+    {{ else }}
+    <h3 class="empty">No Documented Endpoints</h3>
+    {{ end }}
 </main>
 {{ end }}

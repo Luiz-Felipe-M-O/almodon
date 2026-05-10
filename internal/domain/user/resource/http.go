@@ -11,6 +11,11 @@ import (
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
+// Resource is the HTTP resource for users. All its routes stem from:
+//
+//	/users/
+//
+// The session cookie should be set to properly use this resource.
 type Resource struct {
 	http.ServeMux
 

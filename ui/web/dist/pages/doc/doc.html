@@ -1,9 +1,19 @@
 {{ define "head" }}<link rel="stylesheet" href="/toolkit/style/doc.css">{{ end }}
 
+{{ define "body-id" }}end-points{{ end }}
+
+{{ define "nav" }}
+<nav>
+    <menu>
+        <li><a href="./" class="button seamless">Reference</a></li>
+    </menu>
+</nav>
+{{ end }}
+
 {{ define "main" }}
-<main id="end-points">
+<main>
     <aside>
-        <ul>
+        <menu>
             {{ range .EndPoints }}
             <li>
                 <a class="route" href="#{{ .RouteID }}">
@@ -12,19 +22,19 @@
                 </a>
             </li>
             {{ end }}
-        </ul>
+        </menu>
     </aside>
 
-    <section class="main">
+    <section id="section">
         <h2 class="title">{{ .Title }}</h2>
         {{ range .EndPoints }}
-        <section class="end-point" id="{{ .RouteID }}">
+        <div class="end-point" id="{{ .RouteID }}">
             <div class="route">
                 <h3 class="method {{ lower .Method }}">{{ .Method }}</h3>
                 <span class="path">{{ .Path }}</span>
             </div>
             <div class="content">{{ .Body }}</div>
-        </section>
+        </div>
         {{ end }}
     </section>
 </main>

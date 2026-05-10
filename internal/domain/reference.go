@@ -1,10 +1,7 @@
 package domain
 
 import (
-	"bytes"
 	"embed"
-	"maps"
-	"slices"
 
 	"github.com/alan-b-lima/almodon/internal/support/resource/doc"
 )
@@ -13,29 +10,32 @@ import (
 var resource embed.FS
 
 func Reference() (*doc.Ref, error) {
-	refs := map[string]string{
-		"Auth Reference":      "auth/resource/http.go",
-		"Items Reference":     "item/resource/http.go",
-		"Material Reference":  "material/resource/http.go",
-		"Promotion Reference": "promotion/resource/http.go",
-		"User Reference":      "user/resource/http.go",
+	refs := []struct{ Title, Path string }{
+		{Title: "Auth Reference", Path: "auth/resource/http.go"},
+		{Title: "Items Reference", Path: "item/resource/http.go"},
+		{Title: "Material Reference", Path: "material/resource/http.go"},
+		{Title: "Promotion Reference", Path: "promotion/resource/http.go"},
+		{Title: "User Reference", Path: "user/resource/http.go"},
 	}
 
-	titles := slices.Sorted(maps.Keys(refs))
-	docs := make([]*doc.Doc, 0, len(titles))
+	docs := make([]*doc.Doc, 0, len(refs))
 
-	for _, title := range titles {
-		file, err := resource.ReadFile(refs[title])
+	for _, ref := range refs {
+		file, err := resource.Open(ref.Path)
 		if err != nil {
 			return nil, err
 		}
 
-		doc, err := doc.New(title, bytes.NewBuffer(file))
+		d, err := doc.New(ref.Title, file)
 		if err != nil {
+			if err == doc.ErrDocNotFound {
+				continue
+			}
+
 			return nil, err
 		}
 
-		docs = append(docs, doc)
+		docs = append(docs, d)
 	}
 
 	ref, err := doc.NewRef("Almodon Reference", docs)

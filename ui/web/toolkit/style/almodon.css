@@ -82,6 +82,7 @@
         text-decoration: none;
     }
 
+    menu,
     ul,
     ol {
         list-style: none;
@@ -162,18 +163,17 @@
 
         &.seamless {
             & {
-                background-color: var(--color-primary-95);
                 color: var(--color-primary-0);
                 border-color: transparent;
             }
 
             &:is(:hover, :focus-visible, .highlighted) {
-                border-color: var(--color-primary-25);
+                border-color: var(--color-primary-0);
             }
 
             &:active {
-                background-color: var(--color-primary-100);
-                border-color: var(--color-primary-50);
+                border-color: var(--color-accent-50);
+                color: var(--color-accent-50);
             }
         }
 
@@ -352,11 +352,30 @@
     }
 }
 
-#almodon #root {
+#almodon .empty {
+    & {
+        display: grid;
+        justify-items: center;
+        align-content: center;
+        color: var(--color-primary-60);
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+
+    &::before {
+        content: "";
+        background-image: url(/toolkit/assets/icons/orders.svg);
+        filter: brightness(0) saturate(100%) invert(56%) sepia(7%) saturate(259%) hue-rotate(187deg) brightness(88%) contrast(84%);
+        background-size: contain;
+        aspect-ratio: 1;
+        width: 8rem;
+    }
+}
+
+#almodon body {
     & {
         display: grid;
         grid-template-rows: auto 1fr;
-        background-color: var(--color-primary-97);
         height: 100dvh;
     }
 
@@ -364,6 +383,7 @@
         & {
             display: grid;
             grid-template-columns: auto 1fr;
+            background-color: var(--color-primary-97);
             border-bottom: var(--border) var(--color-primary-75);
             padding: .5rem 1rem;
             gap: .5rem;
