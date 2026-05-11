@@ -1,17 +1,17 @@
 {{ define "head" }}
 <link rel="stylesheet" href="/toolkit/style/doc.css">{{ end }}
 
-{{ define "body-id" }}reference{{ end }}
+{{ define "body-id" }}documentation{{ end }}
 
 {{ define "main" }}
-<main>
+<main id="reference">
     <h2 class="title">{{ .Title }}</h2>
     {{ with .Docs }}
     <menu>
         {{ range . }}
         <li>
-            <details>
-                <summary>
+            <details class="box">
+                <summary class="heading">
                     <a class="reference" href="{{ printf `./%s` .Path }}">
                         <h3 class="domain">{{ .Title }}</h3>
                         <span>{{ printf `/%s/` .Path }}</span>

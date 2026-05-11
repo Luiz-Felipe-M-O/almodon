@@ -1,6 +1,6 @@
 {{ define "head" }}<link rel="stylesheet" href="/toolkit/style/doc.css">{{ end }}
 
-{{ define "body-id" }}end-points{{ end }}
+{{ define "body-id" }}documentation{{ end }}
 
 {{ define "nav" }}
 <nav>
@@ -11,13 +11,13 @@
 {{ end }}
 
 {{ define "main" }}
-<main>
+<main id="end-points">
     <aside>
         <menu>
             {{ range .EndPoints }}
             <li>
                 <a class="route" href="#{{ .RouteID }}">
-                    <h2 class="method {{ lower .Method }}">{{ .Method }}</h2>
+                    <h3 class="method {{ lower .Method }}">{{ .Method }}</h3>
                     <span class="path">{{ .Path }}</span>
                 </a>
             </li>
@@ -28,11 +28,12 @@
     <section id="section">
         <h2 class="title">{{ .Title }}</h2>
         {{ range .EndPoints }}
-        <div class="end-point" id="{{ .RouteID }}">
-            <div class="route">
+        <div class="box end-point" id="{{ .RouteID }}">
+            <div class="heading route">
                 <h3 class="method {{ lower .Method }}">{{ .Method }}</h3>
                 <span class="path">{{ .Path }}</span>
             </div>
+
             <div class="content">{{ .Body }}</div>
         </div>
         {{ end }}
