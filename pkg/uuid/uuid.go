@@ -1,13 +1,14 @@
-// Copyright (C) 2025 Alan Barbosa Lima.
+// Copyright (C) 2025-2026 Alan Barbosa Lima.
 //
 // Almodon is licensed under the GNU General Public License
 // version 3. You should have received a copy of the
 // license, located in LICENSE, at the root of the source
 // tree. If not, see <https://www.gnu.org/licenses/>.
 
-// This package implements a UUID generator and some other
-// functionalities revolving UUIDs. Read in RFC9562 for more info
-// about UUIDs.
+// Package uuid implements an UUID version 7 generator, and parsing
+// functionalities regarding UUID. This package is complient to [RFC9562].
+//
+// [RFC9562]: https://www.rfc-editor.org/rfc/rfc9562
 package uuid
 
 import (
@@ -18,8 +19,12 @@ import (
 	"time"
 )
 
-// UUID represents a 128bit unique identifier. Elements of this type can, and
-// should, be compared using the == operator.
+// UUID is the set of all 128-bit universal unique identifiers.
+//
+// Elements of this type have the == operator (equality operator)
+// well defined, clients can and should use == to compare UUID's.
+//
+// The zero value of the UUID type it the Nil UUID.
 type UUID [16]byte
 
 // Nil is the zero value of UUID, according to RFC9562 section 5.9.
@@ -36,7 +41,7 @@ var _Format = "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%
 // Generates a new UUID accourding to version 7. It's safe to call
 // this function from multiple goroutines.
 //
-// The memory layout of a UUIDv7 is as follows:
+// The memory layout of a UUIDv7, as defined in [RFC9562], is as follows:
 //
 //   - Unix Timestamp: 48-bit big-endian unsigned number of the Unix
 //     Epoch timestamp in milliseconds. Occupies bits 0 through 47,
@@ -45,14 +50,16 @@ var _Format = "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%
 //   - Version: 4-bit version field, set to 0b0111 (7). Occupies bits
 //     48 through 51, octet 6.
 //
-//   - Random A: 12-bit pseudorandom data to provide uniqueness.
+//   - Random A: 12-bit pseudo-random data to provide uniqueness.
 //     Occupies bits 52 through 63, octects 6 through 7.
 //
 //   - Variant: 2-bit variant field, set to 0b10. Occupies bits 64
 //     through 65, octet 8.
 //
-//   - Random B: 62-bit pseudorandom data to provide uniqueness.
+//   - Random B: 62-bit pseudo-random data to provide uniqueness.
 //     Occupies bits 66 through 127, octets 8 through 15.
+//
+// [RFC9562]: https://www.rfc-editor.org/rfc/rfc9562
 func NewUUIDv7() UUID {
 	const (
 		mask_48bit = (1 << 48) - 1
@@ -81,10 +88,11 @@ func NewUUIDv7() UUID {
 }
 
 // Converts an UUID from a byte slice. The given byte slice should be
-// of length 16, otherwise an error will be returned. Due to this,
-// this function is NOT interchangeable with [FromString], a byte
-// slice that represents the string representation of an UUID should
-// be converted with [FromString].
+// of length 16, otherwise an error will be returned.
+//
+// Due to this, this function is NOT interchangeable with
+// [FromString], a byte slice that is the string representation of an
+// UUID should be converted with [FromString].
 func FromBytes(bytes []byte) (UUID, error) {
 	if len(bytes) != 16 {
 		return UUID{}, ErrBadSliceLength
@@ -93,8 +101,10 @@ func FromBytes(bytes []byte) (UUID, error) {
 	return UUID(bytes), nil
 }
 
-// Converts an UUID from a string format. Note that this function is
-// NOT interchangeable with [FromBytes], even considering convertion.
+// Converts an UUID from a string format.
+//
+// Note that this function is NOT interchangeable with [FromBytes],
+// see [FromBytes] for more detail.
 func FromString(str string) (UUID, error) {
 	if len(str) != 36 {
 		return UUID{}, ErrBadString
