@@ -25,19 +25,13 @@ type UUID [16]byte
 // Nil is the zero value of UUID, according to RFC9562 section 5.9.
 var Nil UUID
 
-const (
-	_62BitMask = (1 << 62) - 1
-	_48BitMask = (1 << 48) - 1
-	_12BitMask = (1 << 12) - 1
-)
-
 var (
 	ErrBadSliceLength = errors.New("uuid: slice does not has 16 bytes")
 	ErrBadString      = errors.New("uuid: string could not be parsed correctly")
 	ErrBadJSONString  = errors.New("uuid: slice is a malformed JSON string")
 )
 
-var _UUIDFormat = "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x"
+var _Format = "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x"
 
 // Generates a new UUID accourding to version 7. It's safe to call
 // this function from multiple goroutines.
@@ -61,11 +55,13 @@ var _UUIDFormat = "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%
 //     Occupies bits 66 through 127, octets 8 through 15.
 func NewUUIDv7() UUID {
 	const (
+		mask_48bit = (1 << 48) - 1
+
 		version = 0b0111
-		variant = 0b01
+		variant = 0b10
 	)
 
-	unixTimestamp := uint64(time.Now().UnixMilli() & _48BitMask)
+	unixTimestamp := uint64(time.Now().UnixMilli() & mask_48bit)
 	randA, randB := next()
 
 	return UUID{
@@ -105,7 +101,7 @@ func FromString(str string) (UUID, error) {
 	}
 
 	var uuid UUID
-	n, err := fmt.Sscanf(str, _UUIDFormat,
+	n, err := fmt.Sscanf(str, _Format,
 		&uuid[0], &uuid[1], &uuid[2], &uuid[3],
 		&uuid[4], &uuid[5],
 		&uuid[6], &uuid[7],
@@ -130,7 +126,7 @@ func (uuid UUID) Bytes() []byte {
 
 // Implements the interface [fmt.Stringer] on the UUID type.
 func (uuid UUID) String() string {
-	return fmt.Sprintf(_UUIDFormat,
+	return fmt.Sprintf(_Format,
 		uuid[0], uuid[1], uuid[2], uuid[3],
 		uuid[4], uuid[5],
 		uuid[6], uuid[7],
@@ -161,13 +157,19 @@ func (uuid *UUID) UnmarshalJSON(buf []byte) error {
 }
 
 var (
-	pool   [10 * 256]byte // pool is the source for all pseudo-random number needed.
-	offset = len(pool)    // offset is the offset of pseudo-random numbers into pool.
+	pool   [10 * 256]byte // pool of pseudo-random numbers.
+	offset = len(pool)    // offset into the pool, its initialization makes the first call fill the pool.
 
-	mu sync.Mutex // A mutex for safe concurrent UUID generation.
+	mu sync.Mutex
 )
 
+// next generates a 12bit and a 62bit pseudo-random number, respectively.
 func next() (uint64, uint64) {
+	const (
+		mask_62bit = (1 << 62) - 1
+		mask_12bit = (1 << 12) - 1
+	)
+
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -180,7 +182,7 @@ func next() (uint64, uint64) {
 	randA |= uint64(pool[offset+0]) << 0x8
 	randA |= uint64(pool[offset+1]) << 0x0
 
-	randA &= _12BitMask
+	randA &= mask_12bit
 	offset += 2
 
 	var randB uint64
@@ -193,7 +195,7 @@ func next() (uint64, uint64) {
 	randB |= uint64(pool[offset+6]) << 0x08
 	randB |= uint64(pool[offset+7]) << 0x00
 
-	randB &= _62BitMask
+	randB &= mask_62bit
 	offset += 8
 
 	return randA, randB
