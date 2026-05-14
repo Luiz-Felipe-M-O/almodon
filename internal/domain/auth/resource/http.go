@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
+	sessions "github.com/alan-b-lima/almodon/internal/domain/session/resource"
 	"github.com/alan-b-lima/almodon/internal/support/resource"
-	"github.com/alan-b-lima/almodon/internal/support/session"
 )
 
 type Resource struct {
@@ -39,14 +39,14 @@ func (rc *Resource) Login(w http.ResponseWriter, r *http.Request) {
 			return auth.Result{}, err
 		}
 
-		session.SetCookie(w, res.UUID, res.Expires)
+		sessions.SetCookie(w, res.Token, res.Expires)
 		return res, nil
 	}, w, r)
 }
 
 func (rc *Resource) Logout(w http.ResponseWriter, r *http.Request) {
 	resource.DeleteHandler(r.Context(), func(ctx context.Context) error {
-		s, err := session.Cookie(r)
+		s, err := sessions.Cookie(r)
 		if err != nil {
 			return nil
 		}
@@ -55,7 +55,7 @@ func (rc *Resource) Logout(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 
-		session.DeleteCookie(w)
+		sessions.DeleteCookie(w)
 		return nil
 	}, w, r)
 }
