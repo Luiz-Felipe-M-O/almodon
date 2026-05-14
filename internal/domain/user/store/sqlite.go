@@ -29,7 +29,7 @@ const Indexes = `create unique index if not exists Users_siape on Users(siape);`
 
 const Views = `
 create view if not exists Users_View as
-	select u.uuid, u.siape, u.name, u.email, u.password, iif(p.uuid is null, u.role, 'promoted-admin') as 'role', s.uuid is not null as 'logged', u.created, u.updated
+	select u.uuid, u.siape, u.name, u.email, u.password, iif(p.uuid is null, u.role, 'promoted-admin') as 'role', s.token is not null as 'logged', u.created, u.updated
 	from Users u
 	left join Sessions s on s.user = u.uuid
 	left join Promotions p on p.user = u.uuid;`

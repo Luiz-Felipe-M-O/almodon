@@ -9,6 +9,7 @@ import (
 	"github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/internal/support/store"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
+	"github.com/alan-b-lima/pkg/problem"
 )
 
 const Table = `
@@ -125,13 +126,31 @@ func (s *SQLDB) RunTx(ctx context.Context, proc func(session.Store) error) error
 }
 
 func scan(ent *session.Record, scanner store.Scanner) error {
-	var bytes []byte
+	var bytes1, bytes2 []byte
 
-	if err := scanner.Scan(ent.Token.Bytes(), &bytes, &ent.Renewed, &ent.Expires, &ent.Created); err != nil {
+	err := scanner.Scan(
+		&bytes1,
+		&bytes2,
+		&ent.Renewed,
+		&ent.Expires,
+		&ent.Created,
+	)
+	if err != nil {
 		return err
 	}
 
-	return service.Set(&ent.User, bytes, uuid.FromBytes)
+	return problem.Join(
+		service.Set(&ent.Token, bytes1, token_from_bytes),
+		service.Set(&ent.User, bytes2, uuid.FromBytes),
+	)
+}
+
+func token_from_bytes(bytes []byte) (session.Token, error) {
+	if len(bytes) != session.TokenLen {
+		return session.Token{}, session.ErrInvalidToken
+	}
+
+	return session.Token(bytes), nil
 }
 
 const (
