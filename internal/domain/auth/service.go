@@ -4,18 +4,19 @@ import (
 	"context"
 	"time"
 
+	"github.com/alan-b-lima/almodon/internal/domain/session"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
 type Service interface {
-	Login(ctx context.Context, siape string, password string) (Result, error)
-	Logout(ctx context.Context, session uuid.UUID) error
+	Login(ctx context.Context, siape, password string) (Result, error)
+	Logout(ctx context.Context, session session.Token) error
 
 	Authenticator
 }
 
 type Authenticator interface {
-	Actor(ctx context.Context, session uuid.UUID) (Actor, error)
+	Actor(ctx context.Context, session session.Token) (Actor, error)
 }
 
 type (
@@ -27,8 +28,8 @@ type (
 
 type (
 	Result struct {
-		UUID    uuid.UUID `json:"-"`
-		User    uuid.UUID `json:"user"`
-		Expires time.Time `json:"expires"`
+		Token   session.Token `json:"-"`
+		User    uuid.UUID     `json:"user"`
+		Expires time.Time     `json:"expires"`
 	}
 )

@@ -10,14 +10,14 @@ import (
 type Store interface {
 	List(context.Context) ([]Record, error)
 
-	Get(context.Context, uuid.UUID) (Record, error)
+	Get(context.Context, Token) (Record, error)
 	GetByUser(context.Context, uuid.UUID) (Record, error)
 
 	Create(context.Context, CreateRecord) error
 
-	Update(context.Context, uuid.UUID, UpdateRecord) error
+	Update(context.Context, Token, UpdateRecord) error
 
-	Delete(context.Context, uuid.UUID) error
+	Delete(context.Context, Token) error
 	DeleteExpired(context.Context, time.Time) error
 
 	RunTx(context.Context, func(Store) error) error
@@ -25,7 +25,7 @@ type Store interface {
 
 type (
 	Record struct {
-		UUID    uuid.UUID
+		Token   Token
 		User    uuid.UUID
 		Renewed int
 		Expires time.Time
@@ -35,7 +35,7 @@ type (
 
 type (
 	CreateRecord struct {
-		UUID    uuid.UUID
+		Token   Token
 		User    uuid.UUID
 		Renewed int
 		Expires time.Time

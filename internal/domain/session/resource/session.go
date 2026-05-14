@@ -1,14 +1,15 @@
-package session
+package sessions
 
 import (
 	"context"
 	"net/http"
 	"time"
 
+	"github.com/alan-b-lima/almodon/internal/domain/session"
 	"github.com/alan-b-lima/almodon/internal/support/resource"
-	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
+// on malformed session token, clear the token and let the user proceed as unlogged.
 type Handler struct {
 	Handler http.Handler
 }
@@ -24,10 +25,17 @@ func WrapFunc(handler http.HandlerFunc) http.Handler {
 }
 
 func (s *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, err := Session(r.Context(), r)
-	if err != nil {
-		resource.WriteError(w, err)
-		return
+	ctx := r.Context()
+
+	if c, err := Session(ctx, r); err != nil {
+		if err != session.ErrInvalidToken {
+			resource.WriteError(w, err)
+			return
+		}
+
+		DeleteCookie(w)
+	} else {
+		ctx = c
 	}
 
 	r = r.WithContext(ctx)
@@ -49,24 +57,24 @@ func Session(ctx context.Context, r *http.Request) (context.Context, error) {
 	return context.WithValue(ctx, "session", session), nil
 }
 
-func Cookie(r *http.Request) (uuid.UUID, error) {
+func Cookie(r *http.Request) (session.Token, error) {
 	s, err := r.Cookie(SessionIdentifier)
 	if err != nil {
-		return uuid.UUID{}, http.ErrNoCookie
+		return session.Token{}, http.ErrNoCookie
 	}
 
-	session, err := uuid.FromString(s.Value)
+	token, err := session.FromString(s.Value)
 	if err != nil {
-		return uuid.UUID{}, resource.ErrBadUUID
+		return session.Token{}, session.ErrInvalidToken
 	}
 
-	return session, nil
+	return token, nil
 }
 
-func SetCookie(w http.ResponseWriter, uuid uuid.UUID, expires time.Time) {
+func SetCookie(w http.ResponseWriter, token session.Token, expires time.Time) {
 	cookie := &http.Cookie{
 		Name:     SessionIdentifier,
-		Value:    uuid.String(),
+		Value:    token.String(),
 		Expires:  expires,
 		Path:     "/",
 		HttpOnly: true,

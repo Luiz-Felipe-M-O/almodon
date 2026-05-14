@@ -7,8 +7,6 @@ import (
 	"github.com/alan-b-lima/almodon/internal/domain/session"
 	"github.com/alan-b-lima/almodon/internal/support/service"
 
-	"github.com/alan-b-lima/almodon/pkg/uuid"
-
 	"github.com/alan-b-lima/pkg/problem"
 	"github.com/alan-b-lima/pkg/scheduler"
 )
@@ -29,8 +27,8 @@ func New(sessions session.Store, scheduler *scheduler.Scheduler) *Core {
 
 const _MaxAge = 1 * time.Hour
 
-func (c *Core) Get(ctx context.Context, uuid uuid.UUID) (session.Result, error) {
-	res, err := c.Sessions.Get(ctx, uuid)
+func (c *Core) Get(ctx context.Context, token session.Token) (session.Result, error) {
+	res, err := c.Sessions.Get(ctx, token)
 	if err != nil {
 		return session.Result{}, err
 	}
@@ -43,7 +41,7 @@ func (c *Core) Get(ctx context.Context, uuid uuid.UUID) (session.Result, error) 
 }
 
 // TODO: verify validity of [_MaxAge] and turn it to an internal error
-func (c *Core) CreateAndGet(ctx context.Context, req session.Create) (session.Result, error) {
+func (c *Core) Create(ctx context.Context, req session.Create) (session.Result, error) {
 	max_age := _MaxAge
 	if v, ok := req.MaxAge.Unwrap(); ok {
 		max_age = v
@@ -59,7 +57,7 @@ func (c *Core) CreateAndGet(ctx context.Context, req session.Create) (session.Re
 	}
 
 	rec.User = req.User
-	rec.UUID = uuid.NewUUIDv7()
+	rec.Token = session.NewToken()
 	rec.Created = time.Now()
 
 	err = c.Sessions.RunTx(ctx, func(store session.Store) error {
@@ -69,7 +67,7 @@ func (c *Core) CreateAndGet(ctx context.Context, req session.Create) (session.Re
 				return err
 			}
 
-			if err := store.Delete(ctx, s.UUID); err != nil {
+			if err := store.Delete(ctx, s.Token); err != nil {
 				return err
 			}
 		}
@@ -86,7 +84,7 @@ func (c *Core) CreateAndGet(ctx context.Context, req session.Create) (session.Re
 }
 
 // TODO: verify validity of _MaxAge and turn it to an internal error
-func (c *Core) Update(ctx context.Context, uuid uuid.UUID, req session.Update) error {
+func (c *Core) Update(ctx context.Context, token session.Token, req session.Update) error {
 	max_age := _MaxAge
 	if v, ok := req.MaxAge.Unwrap(); ok {
 		max_age = v
@@ -94,7 +92,7 @@ func (c *Core) Update(ctx context.Context, uuid uuid.UUID, req session.Update) e
 
 	var expires time.Time
 	err := c.Sessions.RunTx(ctx, func(store session.Store) error {
-		s, err := store.Get(ctx, uuid)
+		s, err := store.Get(ctx, token)
 		if err != nil {
 			return err
 		}
@@ -109,7 +107,7 @@ func (c *Core) Update(ctx context.Context, uuid uuid.UUID, req session.Update) e
 		}
 
 		expires = rec.Expires
-		return c.Sessions.Update(ctx, uuid, rec)
+		return c.Sessions.Update(ctx, token, rec)
 	})
 	if err != nil {
 		return err
@@ -119,8 +117,8 @@ func (c *Core) Update(ctx context.Context, uuid uuid.UUID, req session.Update) e
 	return nil
 }
 
-func (c *Core) Delete(ctx context.Context, uuid uuid.UUID) error {
-	return c.Sessions.Delete(ctx, uuid)
+func (c *Core) Delete(ctx context.Context, token session.Token) error {
+	return c.Sessions.Delete(ctx, token)
 }
 
 func (c *Core) Publish(ctx context.Context) error {
