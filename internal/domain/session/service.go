@@ -9,13 +9,13 @@ import (
 )
 
 type Service interface {
-	Get(context.Context, uuid.UUID) (Result, error)
+	Get(context.Context, Token) (Result, error)
 
-	CreateAndGet(context.Context, Create) (Result, error)
+	Create(context.Context, Create) (Result, error)
 
-	Update(context.Context, uuid.UUID, Update) error
+	Update(context.Context, Token, Update) error
 
-	Delete(context.Context, uuid.UUID) error
+	Delete(context.Context, Token) error
 }
 
 type (
@@ -31,7 +31,7 @@ type (
 
 type (
 	Result struct {
-		UUID    uuid.UUID `json:"-"`
+		Token   Token     `json:"-"`
 		User    uuid.UUID `json:"user"`
 		Renewed int       `json:"renewed"`
 		Expires time.Time `json:"expires"`
