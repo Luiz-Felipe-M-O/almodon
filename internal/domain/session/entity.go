@@ -30,7 +30,7 @@ func ProcessMaxAge(max_age time.Duration) (time.Time, error) {
 	return expires, nil
 }
 
-const TokenLen = 32
+const TokenLen = 24
 
 type Token [TokenLen]byte
 
@@ -48,7 +48,7 @@ func (t *Token) Bytes() []byte {
 var _Format = `%0` + strconv.Itoa(2*TokenLen) + `x`
 
 func (t Token) String() string {
-	return fmt.Sprintf(_Format, t)
+	return fmt.Sprintf(_Format, t[:])
 }
 
 func FromString(string string) (Token, error) {
@@ -58,11 +58,12 @@ func FromString(string string) (Token, error) {
 
 	var token Token
 	for i := range TokenLen {
-		b, err := strconv.ParseInt(string[:2], 16, 8)
+		b, err := strconv.ParseUint(string[:2], 16, 8)
 		if err != nil {
 			return Token{}, ErrInvalidToken
 		}
 
+		string = string[2:]
 		token[i] = byte(b)
 	}
 
