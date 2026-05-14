@@ -3,16 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/alan-b-lima/almodon/internal/api"
+	"github.com/alan-b-lima/almodon/internal/almodon"
 	"github.com/alan-b-lima/almodon/internal/server"
-	"github.com/alan-b-lima/almodon/internal/support/middleware"
+	"github.com/alan-b-lima/almodon/internal/support/resource"
 )
 
 func main() {
@@ -43,7 +43,7 @@ func main() {
 }
 
 func Main(addr string) error {
-	api, err := api.New()
+	api, err := almodon.New()
 	if err != nil {
 		return err
 	}
@@ -53,10 +53,10 @@ func Main(addr string) error {
 		}
 	}()
 
-	log := log.New(os.Stdout, "", log.Ldate|log.Ltime)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	var mux http.ServeMux
 
-	server, err := server.New(addr, Logger(log, &mux))
+	server, err := server.New(addr, Logger(logger, &mux))
 	if err != nil {
 		return err
 	}
@@ -117,13 +117,28 @@ func shutdown(server *server.Server) error {
 	return server.ForceShutdown()
 }
 
-func Logger(log *log.Logger, h http.Handler) http.HandlerFunc {
+func Logger(log *slog.Logger, h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rw := middleware.NewResponseWriterWithStatus(w)
+		rw := resource.NewResponseWriter(w)
+		start := time.Now()
 
 		h.ServeHTTP(rw, r)
 
-		log.Printf("%d %s %s %s\n", rw.StatusCode(), r.RemoteAddr, r.Method, r.URL)
+		elapsed := time.Since(start)
+
+		level := slog.LevelInfo
+		if rw.StatusCode()/100 == 5 {
+			level = slog.LevelError
+		}
+
+		log.LogAttrs(r.Context(), level, "completed request",
+			slog.Int("status", rw.StatusCode()),
+			slog.String("remote", r.RemoteAddr),
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.String()),
+			slog.Duration("elapsed", elapsed),
+			slog.Any("error", rw.Error()),
+		)
 	}
 }
 
