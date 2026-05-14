@@ -9,6 +9,7 @@ import (
 	"github.com/alan-b-lima/almodon/internal/support/resource"
 )
 
+// on malformed session token, clear the token and let the user proceed as unlogged.
 type Handler struct {
 	Handler http.Handler
 }
@@ -24,10 +25,17 @@ func WrapFunc(handler http.HandlerFunc) http.Handler {
 }
 
 func (s *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, err := Session(r.Context(), r)
-	if err != nil {
-		resource.WriteError(w, err)
-		return
+	ctx := r.Context()
+
+	if c, err := Session(ctx, r); err != nil {
+		if err != session.ErrInvalidToken {
+			resource.WriteError(w, err)
+			return
+		}
+
+		DeleteCookie(w)
+	} else {
+		ctx = c
 	}
 
 	r = r.WithContext(ctx)
@@ -57,7 +65,7 @@ func Cookie(r *http.Request) (session.Token, error) {
 
 	token, err := session.FromString(s.Value)
 	if err != nil {
-		return session.Token{}, resource.ErrBadUUID
+		return session.Token{}, session.ErrInvalidToken
 	}
 
 	return token, nil
