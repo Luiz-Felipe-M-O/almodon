@@ -98,11 +98,18 @@ func New(opts ...Option) (*Domain, error) {
 		}
 	}(&err)
 
-	db, err := MountSQLiteDB([]string{
-		".data/almodon.db",
-		"../.data/almodon.db",
-		"../../.data/almodon.db",
-	})
+	opt := Condense(opts...)
+
+	var db *sql.DB
+	if opt&InMemory == 0 {
+		db, err = OpenSQLiteDB(
+			".data/almodon.db",
+			"../.data/almodon.db",
+			"../../.data/almodon.db",
+		)
+	} else {
+		db, err = OpenSQLiteDBInMemory()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +136,6 @@ func New(opts ...Option) (*Domain, error) {
 		Bundle: bundle,
 	}
 
-	opt := Condense(opts...)
-
 	if opt&Structure != 0 {
 		if err = PrepareStructure(db); err != nil {
 			return nil, err
@@ -156,6 +161,7 @@ type Option int
 
 const (
 	Structure Option = 1 << iota
+	InMemory
 	RootUser
 	Publish
 
@@ -175,7 +181,7 @@ func Condense(opts ...Option) Option {
 	return final
 }
 
-func MountSQLiteDB(names []string) (*sql.DB, error) {
+func OpenSQLiteDB(names ...string) (*sql.DB, error) {
 	var name string
 	for _, n := range names {
 		_, err := os.Stat(n)
@@ -189,6 +195,10 @@ func MountSQLiteDB(names []string) (*sql.DB, error) {
 	}
 
 	return sql.Open("sqlite3", name)
+}
+
+func OpenSQLiteDBInMemory() (*sql.DB, error) {
+	return sql.Open("sqlite3", ":memory:")
 }
 
 func MountStores(db *sql.DB) Stores {
@@ -244,32 +254,41 @@ func MountResources(services Services) Resources {
 
 var ErrNoRootUser = errors.New("no root user found in database")
 
-var operations = [...]string{
+var setup = [...]string{
 	"PRAGMA foreign_keys = ON;",
+}
 
-	materialstore.Table,
-	itemstore.Table,
-	userstore.Table,
-	sessionstore.Table,
-	promotionstore.Table,
-
-	materialstore.Indexes,
-	promotionstore.Indexes,
-	sessionstore.Indexes,
-	userstore.Indexes,
-
-	itemstore.Views,
-	userstore.Views,
+var scripts = [...]string{
+	itemstore.Script,
+	materialstore.Script,
+	promotionstore.Script,
+	sessionstore.Script,
+	userstore.Script,
 }
 
 func PrepareStructure(db *sql.DB) error {
-	for _, op := range operations {
+	for _, op := range setup {
 		if _, err := db.Exec(op); err != nil {
 			return err
 		}
 	}
 
-	return nil
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, script := range scripts {
+		if _, err := tx.Exec(script); err != nil {
+			if err := tx.Rollback(); err != nil {
+				return err
+			}
+
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func HasRootUser(users user.Store) error {
