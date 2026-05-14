@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	pool   [32 * 256]byte
+	pool   [TokenLen * 256]byte
 	offset = len(pool)
 
 	mu sync.Mutex
