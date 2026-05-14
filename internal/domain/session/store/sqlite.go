@@ -9,13 +9,11 @@ import (
 	"github.com/alan-b-lima/almodon/internal/support/service"
 	"github.com/alan-b-lima/almodon/internal/support/store"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
-
-	"github.com/alan-b-lima/pkg/problem"
 )
 
 const Table = `
 create table if not exists Sessions (
-	uuid    blob primary key,
+	token   blob primary key,
 	user    blob not null,
 	renewed int not null,
 	expires datetime not null,
@@ -24,8 +22,7 @@ create table if not exists Sessions (
 	foreign key (user) references Users(uuid)
 );`
 
-const Indexes = `
-create index if not exists Sessions_user on Sessions(user);`
+const Indexes = `create index if not exists Sessions_user on Sessions(user);`
 
 type SQLDB struct {
 	db store.DBTx
@@ -59,8 +56,8 @@ func (s *SQLDB) List(ctx context.Context) ([]session.Record, error) {
 	return recs, nil
 }
 
-func (s *SQLDB) Get(ctx context.Context, uuid uuid.UUID) (session.Record, error) {
-	return s.get(s.db.QueryRowContext(ctx, get, uuid.Bytes()))
+func (s *SQLDB) Get(ctx context.Context, token session.Token) (session.Record, error) {
+	return s.get(s.db.QueryRowContext(ctx, get, token.Bytes()))
 }
 
 func (s *SQLDB) GetByUser(ctx context.Context, user uuid.UUID) (session.Record, error) {
@@ -81,7 +78,7 @@ func (s *SQLDB) get(row *sql.Row) (session.Record, error) {
 }
 
 func (s *SQLDB) Create(ctx context.Context, rec session.CreateRecord) error {
-	_, err := s.db.ExecContext(ctx, create, rec.UUID.Bytes(), rec.User.Bytes(), rec.Renewed, rec.Expires, rec.Created)
+	_, err := s.db.ExecContext(ctx, create, rec.Token.Bytes(), rec.User.Bytes(), rec.Renewed, rec.Expires, rec.Created)
 	if err != nil {
 		return store.ErrExec.Cause(err).Make()
 	}
@@ -89,8 +86,8 @@ func (s *SQLDB) Create(ctx context.Context, rec session.CreateRecord) error {
 	return nil
 }
 
-func (s *SQLDB) Update(ctx context.Context, uuid uuid.UUID, rec session.UpdateRecord) error {
-	res, err := s.db.ExecContext(ctx, update, rec.Renewed, rec.Expires, uuid.Bytes())
+func (s *SQLDB) Update(ctx context.Context, token session.Token, rec session.UpdateRecord) error {
+	res, err := s.db.ExecContext(ctx, update, rec.Renewed, rec.Expires, token.Bytes())
 	if err != nil {
 		return store.ErrExec.Cause(err).Make()
 	}
@@ -103,8 +100,8 @@ func (s *SQLDB) Update(ctx context.Context, uuid uuid.UUID, rec session.UpdateRe
 	return nil
 }
 
-func (s *SQLDB) Delete(ctx context.Context, uuid uuid.UUID) error {
-	_, err := s.db.ExecContext(ctx, delete, uuid.Bytes())
+func (s *SQLDB) Delete(ctx context.Context, token session.Token) error {
+	_, err := s.db.ExecContext(ctx, delete, token.Bytes())
 	if err != nil {
 		return store.ErrExec.Cause(err).Make()
 	}
@@ -128,25 +125,22 @@ func (s *SQLDB) RunTx(ctx context.Context, proc func(session.Store) error) error
 }
 
 func scan(ent *session.Record, scanner store.Scanner) error {
-	var bytes1, bytes2 []byte
+	var bytes []byte
 
-	if err := scanner.Scan(&bytes1, &bytes2, &ent.Renewed, &ent.Expires, &ent.Created); err != nil {
+	if err := scanner.Scan(ent.Token.Bytes(), &bytes, &ent.Renewed, &ent.Expires, &ent.Created); err != nil {
 		return err
 	}
 
-	return problem.Join(
-		service.Set(&ent.UUID, bytes1, uuid.FromBytes),
-		service.Set(&ent.User, bytes2, uuid.FromBytes),
-	)
+	return service.Set(&ent.User, bytes, uuid.FromBytes)
 }
 
 const (
-	list        = `select uuid, user, renewed, expires, created from Sessions`
-	get         = list + ` where uuid = ?`
+	list        = `select token, user, renewed, expires, created from Sessions`
+	get         = list + ` where token = ?`
 	get_by_user = list + ` where user = ?`
 
-	create         = `insert into Sessions (uuid, user, renewed, expires, created) values (?, ?, ?, ?, ?)`
-	update         = `update Sessions set renewed = ?, expires = ? where uuid = ?`
-	delete         = `delete from Sessions where uuid = ?`
+	create         = `insert into Sessions (token, user, renewed, expires, created) values (?, ?, ?, ?, ?)`
+	update         = `update Sessions set renewed = ?, expires = ? where token = ?`
+	delete         = `delete from Sessions where token = ?`
 	delete_expired = `delete from Sessions where expires < ?`
 )
