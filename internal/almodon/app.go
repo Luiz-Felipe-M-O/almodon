@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/alan-b-lima/almodon/internal/domain"
-	"github.com/alan-b-lima/almodon/internal/support/session"
+	sessions "github.com/alan-b-lima/almodon/internal/domain/session/resource"
 	"github.com/alan-b-lima/almodon/ui/web"
 )
 
@@ -33,7 +33,7 @@ func New() (*Almodon, error) {
 
 	a.mux.Handle("/toolkit/", toolkit)
 	a.mux.Handle("/docs/", docs)
-	a.mux.Handle("/api/", session.Wrap(api))
+	a.mux.Handle("/api/", sessions.Wrap(api))
 
 	return &a, nil
 }
