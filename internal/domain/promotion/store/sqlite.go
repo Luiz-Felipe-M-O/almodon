@@ -3,6 +3,7 @@ package promotionstore
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/promotion"
@@ -12,17 +13,8 @@ import (
 	"github.com/alan-b-lima/pkg/problem"
 )
 
-const Table = `
-create table if not exists Promotions (
-	uuid    blob primary key,
-	user    blob not null,
-	expires datetime not null,
-
-	foreign key (user) references Users(uuid)
-);`
-
-const Indexes = `
-create index if not exists Promotions_user on Promotions(user);`
+//go:embed sqlite.sql
+var Script string
 
 type SQLDB struct {
 	db store.DBTx

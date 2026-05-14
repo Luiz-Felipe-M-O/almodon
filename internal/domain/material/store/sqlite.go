@@ -3,6 +3,7 @@ package materialstore
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 
 	"github.com/alan-b-lima/almodon/internal/domain/material"
 	"github.com/alan-b-lima/almodon/internal/support/service"
@@ -10,24 +11,8 @@ import (
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 )
 
-const Table = `
-create table if not exists Materials (
-	uuid        blob primary key,
-	name        text not null,
-	ecampus     integer not null,
-	catmat      integer not null,
-	siads       integer not null,
-	description text not null,
-	unit        text not null,
-	min         real not null,
-	created     datetime not null,
-	updated     datetime not null
-);`
-
-const Indexes = `
-create index if not exists Materials_ecampus on Materials(ecampus);
-create index if not exists Materials_catmat on Materials(catmat);
-create index if not exists Materials_siads on Materials(siads);`
+//go:embed sqlite.sql
+var Script string
 
 type SQLDB struct {
 	db store.DBTx

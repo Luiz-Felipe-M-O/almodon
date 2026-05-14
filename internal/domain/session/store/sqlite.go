@@ -3,6 +3,7 @@ package sessionstore
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/session"
@@ -12,18 +13,8 @@ import (
 	"github.com/alan-b-lima/pkg/problem"
 )
 
-const Table = `
-create table if not exists Sessions (
-	token   blob primary key,
-	user    blob not null,
-	renewed int not null,
-	expires datetime not null,
-	created datetime not null,
-
-	foreign key (user) references Users(uuid)
-);`
-
-const Indexes = `create index if not exists Sessions_user on Sessions(user);`
+//go:embed sqlite.sql
+var Script string
 
 type SQLDB struct {
 	db store.DBTx
