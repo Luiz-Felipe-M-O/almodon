@@ -12,7 +12,7 @@ func GetHandler[TRes any](ctx context.Context, proc func(context.Context) (TRes,
 		return
 	}
 
-	if err := EncodeJSON(&res, http.StatusOK, w, r); err != nil {
+	if err := EncodeJSON(w, r, &res, http.StatusOK); err != nil {
 		WriteError(w, err)
 		return
 	}
@@ -20,7 +20,7 @@ func GetHandler[TRes any](ctx context.Context, proc func(context.Context) (TRes,
 
 func PostHandler[TRes, TReq any](ctx context.Context, proc func(context.Context, TReq) (TRes, error), w http.ResponseWriter, r *http.Request) {
 	var req TReq
-	if err := DecodeJSON(&req, r); err != nil {
+	if err := DecodeJSON(r, &req); err != nil {
 		WriteError(w, err)
 		return
 	}
@@ -31,7 +31,7 @@ func PostHandler[TRes, TReq any](ctx context.Context, proc func(context.Context,
 		return
 	}
 
-	if err := EncodeJSON(&uuid, http.StatusCreated, w, r); err != nil {
+	if err := EncodeJSON(w, r, &uuid, http.StatusCreated); err != nil {
 		WriteError(w, err)
 		return
 	}
@@ -39,7 +39,7 @@ func PostHandler[TRes, TReq any](ctx context.Context, proc func(context.Context,
 
 func PutHandler[TReq any](ctx context.Context, proc func(context.Context, TReq) error, w http.ResponseWriter, r *http.Request) {
 	var req TReq
-	if err := DecodeJSON(&req, r); err != nil {
+	if err := DecodeJSON(r, &req); err != nil {
 		WriteError(w, err)
 		return
 	}

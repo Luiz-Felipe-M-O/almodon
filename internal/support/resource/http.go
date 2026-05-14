@@ -12,6 +12,31 @@ import (
 	"github.com/alan-b-lima/pkg/problem"
 )
 
+type ResponseWriter struct {
+	http.ResponseWriter
+
+	status int
+	err    error
+}
+
+func NewResponseWriter(w http.ResponseWriter) *ResponseWriter {
+	return &ResponseWriter{ResponseWriter: w, status: 200, err: nil}
+}
+
+var _ http.ResponseWriter = (*ResponseWriter)(nil)
+
+func (rw *ResponseWriter) WriteHeader(status int) {
+	rw.ResponseWriter.WriteHeader(status)
+	rw.status = status
+}
+
+func (rw *ResponseWriter) StatusCode() int { return rw.status }
+func (rw *ResponseWriter) Error() error    { return rw.err }
+
+func (rw *ResponseWriter) Unwrap() http.ResponseWriter {
+	return rw.ResponseWriter
+}
+
 func WriteError(w http.ResponseWriter, err error) {
 	if err == nil {
 		return
@@ -26,15 +51,22 @@ func WriteError(w http.ResponseWriter, err error) {
 }
 
 func writeErrorJson(w http.ResponseWriter, err error, status int) {
-	body, e := json.Marshal(err)
-	if e != nil {
-		http.Error(w, e.Error(), http.StatusInternalServerError)
+	b := buffers.Get().(*bytes.Buffer)
+	defer buffers.Put(b)
+	b.Reset()
+
+	if rw, ok := w.(*ResponseWriter); ok {
+		rw.err = err
+	}
+
+	if err := json.NewEncoder(b).Encode(err); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	w.Write(body)
+	w.Write(b.Bytes())
 }
 
 var (
@@ -42,7 +74,7 @@ var (
 	reAcceptApplicationJson      = regexp.MustCompile(`(^|.*,)\s*(\*/\*|application/(json|\*))\s*(;.*)?\s*($|,.*)`)
 )
 
-func DecodeJSON(req any, r *http.Request) error {
+func DecodeJSON(r *http.Request, req any) error {
 	contentType := r.Header.Get("Content-Type")
 	if contentType == "" {
 		return ErrNoContentType
@@ -65,7 +97,7 @@ func DecodeJSON(req any, r *http.Request) error {
 
 var buffers = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
-func EncodeJSON(res any, status int, w http.ResponseWriter, r *http.Request) error {
+func EncodeJSON(w http.ResponseWriter, r *http.Request, res any, status int) error {
 	accept := r.Header.Get("Accept")
 	if !reAcceptApplicationJson.MatchString(accept) {
 		return ErrNotAcceptable.Make("application/json")
