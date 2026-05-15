@@ -29,8 +29,8 @@ func New(items item.Service) *Resource {
 		"GET /items/catmat/{catmat}":     rc.ListByCATMAT,
 		"GET /items/siads/{siads}":       rc.ListBySIADS,
 		"GET /items/{uuid}":              rc.Get,
+		"GET /items/history/{uuid}":      rc.History,
 		"POST /items/{$}":                rc.Create,
-		"PUT /items/{uuid}":              rc.UpdateAmount,
 		"PATCH /items/{uuid}":            rc.Patch,
 		"DELETE /items/{uuid}":           rc.Delete,
 		"/":                              resource.NotFound,
@@ -102,21 +102,19 @@ func (rc *Resource) Get(w http.ResponseWriter, r *http.Request) {
 	}, w, r)
 }
 
-func (rc *Resource) Create(w http.ResponseWriter, r *http.Request) {
-	resource.PostHandler(r.Context(), rc.Items.Create, w, r)
-}
-
-func (rc *Resource) UpdateAmount(w http.ResponseWriter, r *http.Request) {
-	resource.PutHandler(r.Context(), func(ctx context.Context, req item.UpdateAmount) error {
+func (rc *Resource) History(w http.ResponseWriter, r *http.Request) {
+	resource.GetHandler(r.Context(), func(ctx context.Context) (item.HistoryResult, error) {
 		uuid, err := uuid.FromString(r.PathValue("uuid"))
 		if err != nil {
-			return resource.ErrBadUUID
+			return item.HistoryResult{}, resource.ErrBadInteger
 		}
 
-		r.Cookie("generation")
-
-		return rc.Items.UpdateAmount(ctx, uuid, req)
+		return rc.Items.History(ctx, uuid)
 	}, w, r)
+}
+
+func (rc *Resource) Create(w http.ResponseWriter, r *http.Request) {
+	resource.PostHandler(r.Context(), rc.Items.Create, w, r)
 }
 
 func (rc *Resource) Patch(w http.ResponseWriter, r *http.Request) {
