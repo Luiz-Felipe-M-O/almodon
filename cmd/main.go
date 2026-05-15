@@ -37,60 +37,62 @@ func main() {
 		addr = os.Args[1]
 	}
 
-	if err := Main(addr); err != nil {
-		fmt.Println(err)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+
+	if err := Main(addr, logger); err != nil {
+		logger.Error(err.Error())
 	}
 }
 
-func Main(addr string) error {
+func Main(addr string, log *slog.Logger) (reterr error) {
 	api, err := almodon.New()
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err := api.Close(); err != nil {
-			fmt.Println(err)
+			reterr = err
 		}
 	}()
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	var mux http.ServeMux
+	handler := Logger(log, &mux)
 
-	server, err := server.New(addr, Logger(logger, &mux))
+	server, err := server.New(addr, handler, log)
 	if err != nil {
 		return err
 	}
 
 	mux.Handle("/", api)
 	mux.HandleFunc("/terminate", func(w http.ResponseWriter, r *http.Request) {
-		go shutdown(server)
+		go Shutdown(log, server)
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	go SignalShutdown(server)
+	go SignalShutdown(log, server)
 
-	fmt.Println("server listening at http://" + strings.Replace(server.Addr().String(), "[::]", "localhost", 1))
+	log.Info("server listening at http://" + strings.Replace(server.Addr().String(), "[::]", "localhost", 1))
 	if err := server.Serve(); err != nil {
 		return err
 	}
 
 	<-server.Done()
 
-	fmt.Printf("%s %s\n", time.Now().Format(time.DateTime), "server powering off...")
+	log.Info("server powering off...")
 	return nil
 }
 
-func SignalShutdown(server *server.Server) {
+func SignalShutdown(log *slog.Logger, server *server.Server) {
 	<-server.Signal()
 	fmt.Print("\r")
 
-	if err := shutdown(server); err != nil {
-		fmt.Println(err)
+	if err := Shutdown(log, server); err != nil {
+		log.Error(err.Error())
 	}
 }
 
-func shutdown(server *server.Server) error {
-	fmt.Printf("%s %s\n", time.Now().Format(time.DateTime), "starting server shutdown...")
+func Shutdown(log *slog.Logger, server *server.Server) error {
+	log.Info("starting server shutdown...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -113,7 +115,7 @@ func shutdown(server *server.Server) error {
 		}
 	}
 
-	fmt.Printf("%s %s\n", time.Now().Format(time.DateTime), "starting forceful server shutdown...")
+	log.Warn("starting forceful server shutdown...")
 	return server.ForceShutdown()
 }
 
