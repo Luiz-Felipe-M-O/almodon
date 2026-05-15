@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/alan-b-lima/almodon/pkg/money"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 	"github.com/alan-b-lima/pkg/opt"
 )
@@ -16,6 +17,7 @@ type Service interface {
 	ListBySIADS(context.Context, int) ([]Result, error)
 
 	Get(context.Context, uuid.UUID) (Result, error)
+	History(context.Context, uuid.UUID) (HistoryResult, error)
 
 	Create(context.Context, Create) (CreateResult, error)
 
@@ -27,11 +29,10 @@ type Service interface {
 
 type (
 	Create struct {
-		Material uuid.UUID `json:"material"`
-		Amount   float64   `json:"amount"`
-		UnitCost float64   `json:"unit_cost"`
-		Arrival  time.Time `json:"arrival"`
-		Expires  time.Time `json:"expires"`
+		Material uuid.UUID   `json:"material"`
+		Amount   float64     `json:"amount"`
+		UnitCost money.Money `json:"unit_cost"`
+		Expires  time.Time   `json:"expires"`
 	}
 
 	UpdateAmount struct {
@@ -39,30 +40,45 @@ type (
 	}
 
 	Patch struct {
-		Material opt.Opt[uuid.UUID] `json:"material"`
-		UnitCost opt.Opt[float64]   `json:"unit_cost"`
-		Arrival  opt.Opt[time.Time] `json:"arrival"`
-		Expires  opt.Opt[time.Time] `json:"expires"`
+		Material opt.Opt[uuid.UUID]   `json:"material"`
+		UnitCost opt.Opt[money.Money] `json:"unit_cost"`
+		Expires  opt.Opt[time.Time]   `json:"expires"`
 	}
 )
 
 type (
 	Result struct {
-		UUID        uuid.UUID  `json:"uuid"`
-		Name        string     `json:"name"`
-		ECampus     int        `json:"ecampus"`
-		CATMAT      int        `json:"catmat"`
-		SIADS       int        `json:"siads"`
-		Material    uuid.UUID  `json:"material"`
-		Amount      float64    `json:"amount"`
-		AmountFlag  Stock      `json:"amount_flag"`
-		UnitCost    float64    `json:"unit_cost"`
-		Unit        string     `json:"unit"`
-		Arrival     time.Time  `json:"arrival"`
-		Expires     time.Time  `json:"expires"`
-		ExpiresFlag Expiration `json:"expires_flag"`
-		Created     time.Time  `json:"created"`
-		Updated     time.Time  `json:"updated"`
+		UUID        uuid.UUID   `json:"uuid"`
+		Name        string      `json:"name"`
+		ECampus     int         `json:"ecampus"`
+		CATMAT      int         `json:"catmat"`
+		SIADS       int         `json:"siads"`
+		Material    uuid.UUID   `json:"material"`
+		Amount      float64     `json:"amount"`
+		AmountFlag  Stock       `json:"amount_flag"`
+		UnitCost    money.Money `json:"unit_cost"`
+		Unit        string      `json:"unit"`
+		Expires     time.Time   `json:"expires"`
+		ExpiresFlag Expiration  `json:"expires_flag"`
+		Created     time.Time   `json:"created"`
+		Updated     time.Time   `json:"updated"`
+	}
+
+	HistoryResult struct {
+		UUID     uuid.UUID    `json:"uuid"`
+		Version  int          `json:"version"`
+		Created  time.Time    `json:"created"`
+		Updated  time.Time    `json:"updated"`
+		Versions []PastResult `json:"versions"`
+	}
+
+	PastResult struct {
+		Version  int         `json:"version"`
+		Material uuid.UUID   `json:"material"`
+		Amount   float64     `json:"amount"`
+		UnitCost money.Money `json:"unit_cost"`
+		Expires  time.Time   `json:"expires"`
+		Created  time.Time   `json:"created"`
 	}
 
 	CreateResult struct {

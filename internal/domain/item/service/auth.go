@@ -81,6 +81,15 @@ func (c *Gate) Get(ctx context.Context, uuid uuid.UUID) (item.Result, error) {
 	return c.Service.Get(ctx, uuid)
 }
 
+func (c *Gate) History(ctx context.Context, uuid uuid.UUID) (item.HistoryResult, error) {
+	_, err := service.AuthorizeFromContext(ctx, c.Gate, perm_admin)
+	if err != nil {
+		return item.HistoryResult{}, err
+	}
+
+	return c.Service.History(ctx, uuid)
+}
+
 func (c *Gate) Create(ctx context.Context, req item.Create) (item.CreateResult, error) {
 	_, err := service.AuthorizeFromContext(ctx, c.Gate, perm_admin)
 	if err != nil {
