@@ -18,3 +18,11 @@ func NoneNil[T any](opt opt.Opt[T]) any {
 
 	return nil
 }
+
+func Or[T any](opt opt.Opt[T], def T) T {
+	if val, ok := opt.Unwrap(); ok {
+		return val
+	}
+
+	return def
+}
