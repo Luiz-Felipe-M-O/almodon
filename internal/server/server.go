@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -20,10 +22,15 @@ type Server struct {
 	active  chan struct{}
 }
 
-func New(addr string, handler http.Handler) (*Server, error) {
+func New(addr string, handler http.Handler, logger *slog.Logger) (*Server, error) {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
+	}
+
+	var log *log.Logger
+	if logger != nil {
+		log = slog.NewLogLogger(logger.Handler(), slog.LevelError)
 	}
 
 	signals := make(chan os.Signal, 1)
@@ -38,6 +45,7 @@ func New(addr string, handler http.Handler) (*Server, error) {
 			BaseContext: func(net.Listener) context.Context {
 				return base
 			},
+			ErrorLog: log,
 		},
 
 		base:   base,
