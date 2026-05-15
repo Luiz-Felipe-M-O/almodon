@@ -255,7 +255,8 @@ func MountResources(services Services) Resources {
 var ErrNoRootUser = errors.New("no root user found in database")
 
 var setup = [...]string{
-	"PRAGMA foreign_keys = ON;",
+	"PRAGMA foreign_keys = ON",
+	"PRAGMA foreign_key_check",
 }
 
 var scripts = [...]string{
