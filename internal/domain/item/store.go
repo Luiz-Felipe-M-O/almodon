@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/alan-b-lima/almodon/pkg/money"
 	"github.com/alan-b-lima/almodon/pkg/uuid"
 	"github.com/alan-b-lima/pkg/opt"
 )
@@ -17,47 +18,68 @@ type Store interface {
 
 	Get(context.Context, uuid.UUID) (Record, error)
 
-	Create(context.Context, CreateRecord) error
+	History(context.Context, uuid.UUID) (HistoryRecord, error)
 
-	UpdateAmount(context.Context, uuid.UUID, float64) error
-	Patch(context.Context, uuid.UUID, PatchRecord) error
+	Create(context.Context, Entity) error
+
+	Patch(context.Context, uuid.UUID, PatchEntity) error
 
 	Delete(context.Context, uuid.UUID) error
+
+	RunTx(context.Context, func(Store) error) error
 }
 
 type (
 	Record struct {
 		UUID     uuid.UUID
+		Version  int
 		Name     string
 		ECampus  int
 		CATMAT   int
 		SIADS    int
 		Material uuid.UUID
 		Amount   float64
-		UnitCost float64
+		UnitCost money.Money
 		Unit     string
-		Arrival  time.Time
 		Expires  time.Time
 		Min      float64
 		Created  time.Time
 		Updated  time.Time
 	}
 
-	CreateRecord struct {
+	HistoryRecord struct {
+		UUID     uuid.UUID
+		Version  int
+		Created  time.Time
+		Updated  time.Time
+		Versions []PastRecord
+	}
+
+	PastRecord struct {
+		Version  int
+		Material uuid.UUID
+		Amount   float64
+		UnitCost money.Money
+		Expires  time.Time
+		Created  time.Time
+	}
+)
+
+type (
+	Entity struct {
 		UUID     uuid.UUID
 		Material uuid.UUID
 		Amount   float64
-		UnitCost float64
-		Arrival  time.Time
+		UnitCost money.Money
 		Expires  time.Time
 		Created  time.Time
 		Updated  time.Time
 	}
 
-	PatchRecord struct {
+	PatchEntity struct {
 		Material opt.Opt[uuid.UUID]
-		UnitCost opt.Opt[float64]
-		Arrival  opt.Opt[time.Time]
+		Amount   opt.Opt[float64]
+		UnitCost opt.Opt[money.Money]
 		Expires  opt.Opt[time.Time]
 		Updated  time.Time
 	}
