@@ -19,10 +19,10 @@ import (
 // Given a [Hierarchy] h, over the set L, x, y in L, h(x, y) is true if, and
 // only if the permissions of x are inherited by y.
 //
-// A partial ordering is defined as a relation h over a set L, x, y, z in L,
+// A partial ordering is defined as a relation H over a set L, x, y, z in L,
 // that fulfills:
 //   - Reflexivity: h(x, x) is true;
-//   - Antisymmetry: if h(x, y) is true, then h(y, x) is false, if x != y; and
+//   - Antisymmetry: if h(x, y) and h(y, x) are true, then x == y; and
 //   - Transitivity: if h(x, y) and h(y, z) are true, then h(x, z) is true.
 type Hierarchy[R any] func(R, R) bool
 
@@ -34,38 +34,36 @@ type Permission[R any] struct {
 
 // Allow creates a Permission that authorizes any of the given roles according
 // to the provided hierarchy.
-func Allow[R any](hierarchy Hierarchy[R], classes ...R) Permission[R] {
-	var heads []R
+func Allow[R any](hierarchy Hierarchy[R], roles ...R) Permission[R] {
+	leaves := roles[:0]
 
 Outer:
-	for _, class := range classes {
-		for i := 0; i < len(heads); i++ {
-			switch head := heads[i]; {
-			case hierarchy(class, head):
-				continue Outer
+	for _, role := range roles {
+		for i := 0; i < len(leaves); i++ {
+			leaf := leaves[i]
 
-			case hierarchy(head, class):
-				if i == len(heads)-1 {
-					heads = heads[:i]
-				} else {
-					heads[i] = heads[len(heads)-1]
-					heads = heads[:i]
-					i--
-				}
+			if hierarchy(role, leaf) {
+				continue Outer
+			}
+
+			if hierarchy(leaf, role) {
+				leaves[i] = leaves[len(leaves)-1]
+				leaves = leaves[:i]
+				i--
 			}
 		}
 
-		heads = append(heads, class)
+		leaves = append(leaves, role)
 	}
 
 	return Permission[R]{
-		classes:   heads,
+		classes:   leaves,
 		hierarchy: hierarchy,
 	}
 }
 
-// Authorize returns whether the given role is authorized by the Permission.
-func (auth *Permission[R]) Authorize(role R) bool {
+// Allows reports whether the given role is authorized by the permission.
+func (auth Permission[R]) Allows(role R) bool {
 	for _, class := range auth.classes {
 		if auth.hierarchy(class, role) {
 			return true

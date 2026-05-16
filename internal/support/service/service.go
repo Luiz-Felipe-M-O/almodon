@@ -40,7 +40,7 @@ func ActorFromContext(ctx context.Context, gate auth.Authenticator) (auth.Actor,
 }
 
 func Authorize(perms rbac.Permission[auth.Role], actor auth.Actor) error {
-	if role := actor.Role; !perms.Authorize(role) {
+	if role := actor.Role; !perms.Allows(role) {
 		return auth.ErrUnauthorized.Details(map[string]any{"allowed": perms}).Make(role, perms)
 	}
 
