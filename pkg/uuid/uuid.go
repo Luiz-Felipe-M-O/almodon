@@ -13,6 +13,7 @@ package uuid
 
 import (
 	"crypto/rand"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"sync"
@@ -34,12 +35,13 @@ var (
 	ErrBadSliceLength = errors.New("uuid: slice does not has 16 bytes")
 	ErrBadString      = errors.New("uuid: string could not be parsed correctly")
 	ErrBadJSONString  = errors.New("uuid: slice is a malformed JSON string")
+	ErrBadSQLSource   = errors.New("uuid: source is not a valid SQL value for UUID")
 )
 
 var _Format = "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x"
 
-// Generates a new UUID accourding to version 7. It's safe to call
-// this function from multiple goroutines.
+// NewUUIDv7 generates a new UUID accourding to version 7. It's safe
+// to call this function from multiple goroutines.
 //
 // The memory layout of a UUIDv7, as defined in [RFC9562], is as follows:
 //
@@ -87,8 +89,8 @@ func NewUUIDv7() UUID {
 	}
 }
 
-// Converts an UUID from a byte slice. The given byte slice should be
-// of length 16, otherwise an error will be returned.
+// FromBytes converts an UUID from a byte slice. The given byte slice
+// should be of length 16, otherwise an error will be returned.
 //
 // Due to this, this function is NOT interchangeable with
 // [FromString], a byte slice that is the string representation of an
@@ -101,7 +103,8 @@ func FromBytes(bytes []byte) (UUID, error) {
 	return UUID(bytes), nil
 }
 
-// Converts an UUID from a string format.
+// FromString converts an UUID from the string format, in a
+// case-insensitive manner.
 //
 // Note that this function is NOT interchangeable with [FromBytes],
 // see [FromBytes] for more detail.
@@ -134,7 +137,12 @@ func (uuid UUID) Bytes() []byte {
 	return uuid[:]
 }
 
-// Implements the interface [fmt.Stringer] on the UUID type.
+// String implements the interface [fmt.Stringer] on the UUID type.
+// An UUID is formated as:
+//
+//	xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+//
+// Each x is a lowercase hexadecimal digit.
 func (uuid UUID) String() string {
 	return fmt.Sprintf(_Format,
 		uuid[0], uuid[1], uuid[2], uuid[3],
@@ -145,13 +153,15 @@ func (uuid UUID) String() string {
 	)
 }
 
-// Implements the interface [json.Marshaler] on the UUID type.
+// MarshalJSON implements the interface [json.Marshaler] on the UUID
+// type.
 func (uuid UUID) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + uuid.String() + `"`), nil
 }
 
-// Implements the interface [json.Unmarshaler] on the UUID type. The
-// given byte slice should be a valid JSON string literal.
+// UnmarshalJSON implements the interface [json.Unmarshaler] on the
+// UUID type. The given byte slice should be a valid JSON string
+// literal.
 func (uuid *UUID) UnmarshalJSON(buf []byte) error {
 	if len(buf) >= 2 && (buf[0] != '"' || buf[len(buf)-1] != '"') {
 		return ErrBadJSONString
@@ -164,6 +174,28 @@ func (uuid *UUID) UnmarshalJSON(buf []byte) error {
 
 	*uuid = decoded
 	return nil
+}
+
+// Value implements SQL [driver.Valuer] interface, it returns the byte
+// slice representation of the UUID.
+func (uuid UUID) Value() (driver.Value, error) {
+	return uuid.Bytes(), nil
+}
+
+// Scan implements SQL [driver.Scanner] interface, it expects the
+// source to be a byte slice of length 16.
+func (uuid *UUID) Scan(src any) error {
+	if bytes, ok := src.([]byte); ok {
+		u, err := FromBytes(bytes)
+		if err != nil {
+			return err
+		}
+
+		*uuid = u
+		return nil
+	}
+
+	return ErrBadSQLSource
 }
 
 var (
