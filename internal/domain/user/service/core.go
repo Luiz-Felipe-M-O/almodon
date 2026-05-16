@@ -95,9 +95,37 @@ func (c *Core) Patch(ctx context.Context, uuid uuid.UUID, req user.Patch) error 
 
 	rec.Updated = time.Now()
 
-	return c.Users.Patch(ctx, uuid, rec)
+	return c.Users.RunTx(ctx, func(c user.Store) error {
+		if err := c.Patch(ctx, uuid, rec); err != nil {
+			return err
+		}
+
+		count, err := c.CountChiefs(ctx)
+		if err != nil {
+			return err
+		}
+
+		if count <= 0 {
+			return user.ErrNotEnoughChiefs
+		}
+		return nil
+	})
 }
 
 func (c *Core) Delete(ctx context.Context, uuid uuid.UUID) error {
-	return c.Users.Delete(ctx, uuid)
+	return c.Users.RunTx(ctx, func(c user.Store) error {
+		if err := c.Delete(ctx, uuid); err != nil {
+			return err
+		}
+
+		count, err := c.CountChiefs(ctx)
+		if err != nil {
+			return err
+		}
+
+		if count <= 0 {
+			return user.ErrNotEnoughChiefs
+		}
+		return nil
+	})
 }
