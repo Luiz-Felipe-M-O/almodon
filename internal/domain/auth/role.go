@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/alan-b-lima/almodon/pkg/rbac"
 )
@@ -27,15 +28,29 @@ func Allow(classes ...Role) rbac.Permission[Role] {
 	return rbac.Allow(DefaultHierarchy, classes...)
 }
 
-// IsValid returns whether the role refers to an actual role, that is, not
-// unlogged an on the defined range.
+// IsValid returns whether the role refers to a defined role.
 func (l Role) IsValid() bool {
-	return l != Unlogged && l < invalid
+	return l < invalid
+}
+
+// Canonical returns the canonical form of the Role. If the Role is not valid,
+// it returns Unlogged. Otherwise, it returns the Role itself.
+func (l Role) Canonical() Role {
+	if !l.IsValid() {
+		return Unlogged
+	}
+	return l
 }
 
 // String returns the string representation of the Role.
 func (l Role) String() string {
-	return roleStrings[l]
+	if int(l) < len(roles) {
+		s := roles[l]
+		if s != "" {
+			return s
+		}
+	}
+	return "role(" + strconv.Itoa(int(l)) + ")"
 }
 
 func (l Role) MarshalJSON() ([]byte, error) {
@@ -62,23 +77,25 @@ func (l *Role) UnmarshalJSON(data []byte) error {
 
 // DefaultHierarchy defines a partial ordering in the Role type.
 //
-// If [DefaultHierarchy](x, y) evaluates to true, then the permissions of x are
-// inherited by y.
+// If DefaultHierarchy(x, y) evaluates to true, then the permissions of x are
+// inherited by y. For exemple, a Chief can do anything a Admin can,
+// therefore Chief is an inheritor of Admin.
 //
-// Considere [DefaultHierarchy](x, y) iff x < y, then the hierarchy is defined
-// as follows:
+// Considere DefaultHierarchy(x, y) iff x < y, then the hierarchy is defined as
+// follows:
 //
-//   - [Unlogged] < [User] < [Admin] < [Promoted] < [Chief] < [Maintainer]
+//   - [Unlogged] < [User] < [Admin] < [Promoted] < [Chief] < [Maintainer].
+//
+// Not valid roles are treated are treated as [Unlogged].
 func DefaultHierarchy(x, y Role) bool {
+	x = x.Canonical()
+	y = y.Canonical()
+
 	if x == Unlogged {
 		return true
 	}
 
 	if y == Unlogged {
-		return false
-	}
-
-	if !x.IsValid() || !y.IsValid() {
 		return false
 	}
 
@@ -88,15 +105,16 @@ func DefaultHierarchy(x, y Role) bool {
 // FromString returns the Role corresponding to the given string. If the string
 // does not correspond to any Role, it returns false.
 func FromString(string string) (Role, bool) {
-	role, in := stringRoles[string]
-	if !in {
-		return Unlogged, false
+	for i, s := range roles {
+		if s == string {
+			return Role(i), true
+		}
 	}
 
-	return role, true
+	return invalid, false
 }
 
-var roleStrings = map[Role]string{
+var roles = [...]string{
 	Maintainer: "maintainer",
 	Chief:      "chief",
 	Promoted:   "promoted-admin",
@@ -104,14 +122,4 @@ var roleStrings = map[Role]string{
 	User:       "user",
 
 	Unlogged: "unlogged",
-}
-
-var stringRoles = mirror(roleStrings)
-
-func mirror[K, V comparable](m map[K]V) map[V]K {
-	nm := make(map[V]K, len(m))
-	for k, v := range m {
-		nm[v] = k
-	}
-	return nm
 }
