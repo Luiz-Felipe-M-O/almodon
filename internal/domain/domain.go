@@ -1,9 +1,12 @@
 package domain
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
@@ -38,6 +41,7 @@ import (
 	"github.com/alan-b-lima/pkg/scheduler"
 
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/term"
 )
 
 type Domain struct {
@@ -98,18 +102,7 @@ func New(opts ...Option) (*Domain, error) {
 		}
 	}(&err)
 
-	opt := Condense(opts...)
-
-	var db *sql.DB
-	if opt&InMemory == 0 {
-		db, err = OpenSQLiteDB(
-			".data/almodon.db",
-			"../.data/almodon.db",
-			"../../.data/almodon.db",
-		)
-	} else {
-		db, err = OpenSQLiteDBInMemory()
-	}
+	db, err := MountSQLiteDB(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -136,14 +129,22 @@ func New(opts ...Option) (*Domain, error) {
 		Bundle: bundle,
 	}
 
+	opt := Condense(opts...)
+
 	if opt&Structure != 0 {
 		if err = PrepareStructure(db); err != nil {
 			return nil, err
 		}
 	}
 
+	if opt&RootUser != 0 && opt&Interactive != 0 {
+		if err = AssertRootUser(cores.Users); err != nil {
+			return nil, err
+		}
+	}
+
 	if opt&RootUser != 0 {
-		if err = HasRootUser(stores.Users); err != nil {
+		if err = HasRootUser(cores.Users); err != nil {
 			return nil, err
 		}
 	}
@@ -157,15 +158,16 @@ func New(opts ...Option) (*Domain, error) {
 	return &domain, nil
 }
 
-type Option int
+type Option uint64
 
 const (
 	Structure Option = 1 << iota
 	InMemory
 	RootUser
 	Publish
+	Interactive
 
-	Default = Structure | RootUser | Publish
+	Default = Structure | RootUser | Publish | Interactive
 )
 
 func Condense(opts ...Option) Option {
@@ -181,24 +183,32 @@ func Condense(opts ...Option) Option {
 	return final
 }
 
-func OpenSQLiteDB(names ...string) (*sql.DB, error) {
-	var name string
-	for _, n := range names {
-		_, err := os.Stat(n)
-		if !errors.Is(err, os.ErrNotExist) {
-			name = n
-			break
+const SQLiteDriver = "sqlite3"
+
+func MountSQLiteDB(opts ...Option) (*sql.DB, error) {
+	opt := Condense(opts...)
+
+	if opt&InMemory != 0 {
+		return OpenSQLiteDBInMemory()
+	}
+
+	db, err := OpenSQLiteDB(
+		"data/almodon.db",
+		"../data/almodon.db",
+		"../../data/almodon.db",
+	)
+	if opt&Interactive != 0 && errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll("data", 0o775); err != nil {
+			return nil, err
 		}
+
+		db, err = sql.Open(SQLiteDriver, "data/almodon.db")
 	}
-	if name == "" {
-		return nil, os.ErrNotExist
+	if err != nil {
+		return nil, err
 	}
 
-	return sql.Open("sqlite3", name)
-}
-
-func OpenSQLiteDBInMemory() (*sql.DB, error) {
-	return sql.Open("sqlite3", ":memory:")
+	return db, nil
 }
 
 func MountStores(db *sql.DB) Stores {
@@ -252,9 +262,27 @@ func MountResources(services Services) Resources {
 	return resources
 }
 
-var ErrNoRootUser = errors.New("no root user found in database")
+func OpenSQLiteDB(names ...string) (*sql.DB, error) {
+	var name string
+	for _, n := range names {
+		_, err := os.Stat(n)
+		if !errors.Is(err, os.ErrNotExist) {
+			name = n
+			break
+		}
+	}
+	if name == "" {
+		return nil, os.ErrNotExist
+	}
 
-var setup = [...]string{
+	return sql.Open(SQLiteDriver, name)
+}
+
+func OpenSQLiteDBInMemory() (*sql.DB, error) {
+	return sql.Open(SQLiteDriver, ":memory:")
+}
+
+var preconditions = [...]string{
 	"PRAGMA foreign_keys = ON",
 	"PRAGMA foreign_key_check",
 }
@@ -268,7 +296,7 @@ var scripts = [...]string{
 }
 
 func PrepareStructure(db *sql.DB) error {
-	for _, op := range setup {
+	for _, op := range preconditions {
 		if _, err := db.Exec(op); err != nil {
 			return err
 		}
@@ -292,7 +320,9 @@ func PrepareStructure(db *sql.DB) error {
 	return tx.Commit()
 }
 
-func HasRootUser(users user.Store) error {
+var ErrNoRootUser = errors.New("no root user found in database")
+
+func HasRootUser(users user.Service) error {
 	ctx := context.TODO()
 
 	_, err := users.GetBySIAPE(ctx, "0000000")
@@ -300,6 +330,49 @@ func HasRootUser(users user.Store) error {
 		return ErrNoRootUser
 	}
 
+	return err
+}
+
+func AssertRootUser(users user.Service) error {
+	if err := HasRootUser(users); err != ErrNoRootUser {
+		return err
+	}
+
+	user := user.Create{
+		SIAPE: "0000000",
+		Email: "noreply@ufvjm.edu.br",
+		Role:  auth.Maintainer,
+	}
+
+	// we should be careful with this,
+	// our Windows friends might get upset.
+	fmt.Print("\033[?1049h\033[1;1H")
+	defer fmt.Print("\033[?1049l")
+
+	fmt.Println("Creating root user...")
+
+	fmt.Print("Insert name for root user: ")
+	scanner := bufio.NewScanner(os.Stdin)
+	if !scanner.Scan() {
+		return scanner.Err()
+	}
+
+	user.Name = scanner.Text()
+
+	fmt.Printf("Insert password for %q: ", user.Name)
+	password, err := term.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		if err == io.EOF {
+			return io.ErrUnexpectedEOF
+		}
+
+		return err
+	}
+	fmt.Println()
+
+	user.Password = string(password)
+
+	_, err = users.Create(context.TODO(), user)
 	return err
 }
 
