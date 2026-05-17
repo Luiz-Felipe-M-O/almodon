@@ -21,7 +21,7 @@ func read(p []byte) (int, error) {
 	}
 
 	if len(pool[offset:]) < len(p) {
-		n := copy(p, pool[offset:])
+		n := copy(pool[:], pool[offset:])
 		rand.Read(pool[n:])
 		offset = 0
 	}
