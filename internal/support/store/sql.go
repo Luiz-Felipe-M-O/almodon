@@ -57,7 +57,7 @@ func JoinTx(txed any, joiner DBTx) (DBTx, error) {
 
 	tx, ok := txer.Tx().(*txconn)
 	if !ok {
-		return nil, ErrNotTx
+		return nil, ErrNotInTx
 	}
 
 	db, ok := joiner.(*sql.DB)

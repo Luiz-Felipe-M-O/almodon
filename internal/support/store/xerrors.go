@@ -12,6 +12,6 @@ var (
 	ErrNestedTx = problem.New(problem.UnexpectedError, "open-transaction-inside-transaction", "cannot open a transaction inside another transaction", nil, nil)
 
 	ErrNotExtendable = problem.New(problem.UnexpectedError, "not-extendable", "store does not support transaction extension", nil, nil)
-	ErrNotTx         = problem.New(problem.UnexpectedError, "not-transaction", "store is not a transaction", nil, nil)
+	ErrNotInTx       = problem.New(problem.UnexpectedError, "not-transaction", "store is not in a transaction", nil, nil)
 	ErrIllegalJoin   = problem.New(problem.UnexpectedError, "illegal-join", "cannot join transactions from different pools", nil, nil)
 )
