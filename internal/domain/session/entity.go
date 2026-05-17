@@ -1,6 +1,7 @@
 package session
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
@@ -68,4 +69,24 @@ func FromString(string string) (Token, error) {
 	}
 
 	return token, nil
+}
+
+func (t Token) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + t.String() + `"`), nil
+}
+
+func (t *Token) UnmarshalJSON(b []byte) error {
+	var string string
+	err := json.Unmarshal(b, &string)
+	if err != nil {
+		return err
+	}
+
+	token, err := FromString(string)
+	if err != nil {
+		return err
+	}
+
+	*t = token
+	return nil
 }
