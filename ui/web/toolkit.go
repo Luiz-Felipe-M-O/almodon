@@ -29,9 +29,29 @@ func init() {
 	toolkit_mux_emb.Handle("/", http.FileServerFS(toolkit))
 	toolkit_mux_dyn.Handle("/", http.StripPrefix("/toolkit", http.FileServer(http.Dir("./ui/web/toolkit"))))
 
+	toolkit_handler := init_toolkit()
+	toolkit_mux_emb.Handle("/toolkit/{$}", toolkit_handler)
+	toolkit_mux_dyn.Handle("/toolkit/{$}", toolkit_handler)
+
 	icon_handler := init_icons()
-	toolkit_mux_emb.HandleFunc("/toolkit/assets/icons/{$}", icon_handler)
-	toolkit_mux_dyn.HandleFunc("/toolkit/assets/icons/{$}", icon_handler)
+	toolkit_mux_emb.Handle("/toolkit/assets/icons/{$}", icon_handler)
+	toolkit_mux_dyn.Handle("/toolkit/assets/icons/{$}", icon_handler)
+}
+
+func init_toolkit() http.HandlerFunc {
+	tmpl := template.Must(Base().Parse(MustText("toolkit")))
+
+	var b bytes.Buffer
+	if err := tmpl.Execute(&b, nil); err != nil {
+		panic(err)
+	}
+
+	reader := bytes.NewReader(b.Bytes())
+	build := time.Now()
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.ServeContent(w, r, ".html", build, reader)
+	}
 }
 
 var icons = map[string]string{
@@ -97,9 +117,9 @@ func init_icons() http.HandlerFunc {
 	}
 
 	reader := bytes.NewReader(buf.Bytes())
-	now := time.Now()
+	build := time.Now()
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		http.ServeContent(w, r, ".html", now, reader)
+		http.ServeContent(w, r, ".html", build, reader)
 	}
 }

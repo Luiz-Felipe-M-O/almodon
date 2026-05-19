@@ -27,8 +27,8 @@
 
     --color: oklch(57% 0.15 274);
 
-    --color-ok: oklch(65% 0.17 141);
-    --color-error: oklch(50% 0.17 20);
+    --color-ok: oklch(65% 0.22 141);
+    --color-error: oklch(50% 0.22 20);
 
     --color-primary-0: oklch(from var(--color) 0% 0.01 h);
     --color-primary-25: oklch(from var(--color) 25% 0.01 h);
@@ -213,6 +213,18 @@
         font-family: var(--font-default);
     }
 
+    &.title,
+    &:is(h1) {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    &.subtitle,
+    &:is(h2) {
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+
     &.italic {
         font-style: italic;
     }
@@ -355,7 +367,7 @@
         font-size: 1.25rem;
         font-weight: bold;
     }
-    
+
     &::before {
         content: "";
         background-image: url(/toolkit/assets/icons/orders.svg);

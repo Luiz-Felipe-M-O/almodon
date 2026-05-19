@@ -1,0 +1,177 @@
+{{ define "head" }}
+<style>
+    main {
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    section {
+        display: flex;
+        flex-direction: column;
+        gap: .25rem;
+    }
+
+    .box {
+        border: 1px solid var(--color-primary-75);
+        border-radius: var(--radius-round);
+        padding: 1rem;
+    }
+
+    .vertical {
+        display: grid;
+        gap: .5rem;
+    }
+
+    .horizontal {
+        display: flex;
+        gap: .5rem;
+    }
+</style>
+{{ end }}
+
+{{ define "main" }}
+<main>
+    <h1 class="text">The Almodon Style Toolkit</h1>
+
+    <section>
+        <h2 class="text">Fonts</h2>
+
+        <div class="vertical box">
+            <p class="text title">Title</p>
+            <p class="text subtitle">Subtitle</p>
+            <p class="text">Normal</p>
+            <p class="text monospace">Monospace</p>
+            <p class="text italic">Italic</p>
+            <p class="text bold">Bold</p>
+        </div>
+    </section>
+
+    <section>
+        <h2 class="text">Buttons</h2>
+
+        <div class="vertical box">
+            <div class="horizontal">
+                <button class="button primary">Primary</button>
+                <button class="button other">Other</button>
+                <button class="button seamless">Seamless</button>
+                <button class="button destructive">Destructive</button>
+            </div>
+
+            <div class="horizontal">
+                <button class="button primary" disabled>Primary</button>
+                <button class="button other" disabled>Other</button>
+                <button class="button seamless" disabled>Seamless</button>
+                <button class="button destructive" disabled>Destructive</button>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2 class="text">Form</h2>
+
+        <div class="horizontal box">
+            <div class="horizontal">
+                <form class="form">
+                    <label class="field">
+                        <span class="title">Text</span>
+                        <input class="input" type="text" placeholder="Text...">
+                        <span class="reporter">Message</span>
+                    </label>
+
+                    <label class="field invalid">
+                        <span class="title">Text</span>
+                        <input class="input" type="text" placeholder="Text...">
+                        <span class="reporter">Message</span>
+                    </label>
+
+                    <label class="field disabled">
+                        <span class="title">Text</span>
+                        <input class="input" type="text" placeholder="Text..." disabled>
+                        <span class="reporter">Message</span>
+                    </label>
+                </form>
+            </div>
+
+            <div class="horizontal">
+                <form class="form">
+                    <label class="field">
+                        <span class="title">Text</span>
+                        <select class="input">
+                            <option value="1">one</option>
+                            <option value="2">two</option>
+                            <option value="3">three</option>
+                        </select>
+                        <span class="reporter">Message</span>
+                    </label>
+
+                    <label class="field invalid" id="invalid-show">
+                        <span class="title">Text</span>
+                        <select class="input">
+                            <option value="1">one</option>
+                            <option value="2">two</option>
+                            <option value="3">three</option>
+                        </select>
+                        <span class="reporter">Message</span>
+                    </label>
+
+                    <label class="field disabled">
+                        <span class="title">Text</span>
+                        <select class="input" disabled>
+                            <option value="1">one</option>
+                            <option value="2">two</option>
+                            <option value="3">three</option>
+                        </select>
+                        <span class="reporter">Message</span>
+                    </label>
+
+                    <script>
+                        const field = document.getElementById("invalid-show")
+                        const input = field.querySelector("select")
+
+                        document.getElementById("invalid-show").addEventListener("input", function (event) {
+                            field.classList.remove("invalid")
+
+                            if (input.value !== "2") {
+                                field.classList.add("invalid")
+                            }
+                        })
+                    </script>
+                </form>
+            </div>
+
+            <div class="horizontal">
+                <form class="form">
+                    <label class="field">
+                        <span class="title">Text</span>
+                        <div>
+                            <input class="input" type="text" placeholder="XX" style="width: 8ch;">
+                            <input class="input" type="text" placeholder="XXXXX-XXXX">
+                        </div>
+                        <span class="reporter">Message</span>
+                    </label>
+
+                    <label class="field invalid">
+                        <span class="title">Text</span>
+                        <div>
+                            <input class="input" type="text" placeholder="XX" style="width: 8ch;">
+                            <input class="input" type="text" placeholder="XXXXX-XXXX">
+                        </div>
+                        <span class="reporter">Message</span>
+                    </label>
+
+                    <label class="field disabled">
+                        <span class="title">Text</span>
+                        <div>
+                            <input class="input" type="text" placeholder="XX" style="width: 8ch;" disabled>
+                            <input class="input" type="text" placeholder="XXXXX-XXXX" disabled>
+                        </div>
+                        <span class="reporter">Message</span>
+                    </label>
+                </form>
+            </div>
+        </div>
+    </section>
+</main>
+{{ end }}
