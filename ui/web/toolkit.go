@@ -1,12 +1,10 @@
 package web
 
 import (
-	"bytes"
 	"embed"
 	"html/template"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 //go:embed toolkit
@@ -38,20 +36,14 @@ func init() {
 	toolkit_mux_dyn.Handle("/toolkit/assets/icons/{$}", icon_handler)
 }
 
-func init_toolkit() http.HandlerFunc {
+func init_toolkit() http.Handler {
 	tmpl := template.Must(Base().Parse(MustText("toolkit")))
-
-	var b bytes.Buffer
-	if err := tmpl.Execute(&b, nil); err != nil {
+	page, err := Page(tmpl, nil)
+	if err != nil {
 		panic(err)
 	}
 
-	reader := bytes.NewReader(b.Bytes())
-	build := time.Now()
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		http.ServeContent(w, r, ".html", build, reader)
-	}
+	return page
 }
 
 var icons = map[string]string{
@@ -80,7 +72,7 @@ const (
 	icon_route = "/" + icon_dir
 )
 
-func init_icons() http.HandlerFunc {
+func init_icons() http.Handler {
 	dir, err := toolkit.ReadDir(icon_dir)
 	if err != nil {
 		panic(err)
@@ -111,15 +103,9 @@ func init_icons() http.HandlerFunc {
 
 	tmpl := template.Must(Base().Parse(MustText("toolkit/icons")))
 
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, display); err != nil {
+	page, err := Page(tmpl, display)
+	if err != nil {
 		panic(err)
 	}
-
-	reader := bytes.NewReader(buf.Bytes())
-	build := time.Now()
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		http.ServeContent(w, r, ".html", build, reader)
-	}
+	return page
 }
