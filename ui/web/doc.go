@@ -1,4 +1,4 @@
-package doc
+package web
 
 import (
 	"go/doc/comment"
@@ -6,6 +6,18 @@ import (
 	"io"
 	"strings"
 )
+
+func GoComment(text string) (template.HTML, error) {
+	var p comment.Parser
+	doc := p.Parse(text)
+
+	var b strings.Builder
+	if err := parse_content(&b, doc.Content); err != nil {
+		return "", nil
+	}
+
+	return template.HTML(b.String()), nil
+}
 
 func parse_content(b *strings.Builder, doc []comment.Block) error {
 	for _, block := range doc {
