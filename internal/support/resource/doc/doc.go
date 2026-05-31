@@ -1,12 +1,9 @@
 package doc
 
 import (
-	"bytes"
-	_ "embed"
 	"errors"
 	"go/ast"
 	"go/doc"
-	"go/doc/comment"
 	"go/parser"
 	"go/token"
 	"html/template"
@@ -14,7 +11,6 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/alan-b-lima/almodon/ui/web"
 )
@@ -25,30 +21,31 @@ type Doc struct {
 	Descript  template.HTML
 	EndPoints []EndPoint
 
-	buf bytes.Reader
+	page http.Handler
 }
 
 var ErrDocNotFound = errors.New("resource doc not found")
 
-func New(title string, r io.Reader) (*Doc, error) {
+func NewDoc(glob *web.Glob, title string, r io.Reader) (*Doc, error) {
 	pkg, rc, err := resource(r)
 	if err != nil {
 		return nil, err
 	}
 
-	var p comment.Parser
-	var b strings.Builder
-
-	if err := parse_content(&b, p.Parse(rc.Doc).Content); err != nil {
+	html, err := web.GoComment(rc.Doc)
+	if err != nil {
 		return nil, err
 	}
-	root := template.HTML(b.String())
 
 	var eps []EndPoint
 	for _, m := range rc.Methods {
-		ep, ok := NewEndPoint(m.Doc)
-		if !ok {
-			continue
+		ep, err := NewEndPoint(m.Doc)
+		if err != nil {
+			if err == ErrNotRoute {
+				continue
+			}
+
+			return nil, err
 		}
 
 		eps = append(eps, ep)
@@ -64,28 +61,26 @@ func New(title string, r io.Reader) (*Doc, error) {
 	doc := Doc{
 		Title:     title,
 		Path:      pkg,
-		Descript:  root,
+		Descript:  html,
 		EndPoints: eps,
 	}
 
-	var buf bytes.Buffer
-	if err := doc_tmpl.Execute(&buf, doc); err != nil {
+	tmpl, err := glob.Clone().Func("lower", strings.ToLower).Parse("index", "doc/doc")
+	if err != nil {
 		return nil, err
 	}
 
-	doc.buf = *bytes.NewReader(buf.Bytes())
+	doc.page, err = web.MakePage(tmpl, doc)
+	if err != nil {
+		return nil, err
+	}
+
 	return &doc, nil
 }
 
 func (d *Doc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	http.ServeContent(w, r, ".html", time.Time{}, &d.buf)
+	d.page.ServeHTTP(w, r)
 }
-
-var doc_tmpl = template.Must(
-	web.Base().
-		Funcs(template.FuncMap{"lower": strings.ToLower}).
-		Parse(web.MustText("doc/doc")),
-)
 
 var methods = map[string]int{
 	"GET":    1,

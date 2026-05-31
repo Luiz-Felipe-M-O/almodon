@@ -4,12 +4,13 @@ import (
 	"embed"
 
 	"github.com/alan-b-lima/almodon/internal/support/resource/doc"
+	"github.com/alan-b-lima/almodon/ui/web"
 )
 
 //go:embed */resource/http.go
 var resource embed.FS
 
-func Reference() (*doc.Ref, error) {
+func Reference(glob *web.Glob) (*doc.Ref, error) {
 	refs := []struct{ Title, Path string }{
 		{Title: "Auth Reference", Path: "auth/resource/http.go"},
 		{Title: "Items Reference", Path: "item/resource/http.go"},
@@ -26,7 +27,7 @@ func Reference() (*doc.Ref, error) {
 			return nil, err
 		}
 
-		d, err := doc.New(ref.Title, file)
+		d, err := doc.NewDoc(glob, ref.Title, file)
 		if err != nil {
 			if err == doc.ErrDocNotFound {
 				continue
@@ -38,7 +39,7 @@ func Reference() (*doc.Ref, error) {
 		docs = append(docs, d)
 	}
 
-	ref, err := doc.NewRef("Almodon Reference", docs)
+	ref, err := doc.NewRef(glob, "Almodon Reference", docs)
 	if err != nil {
 		return nil, err
 	}

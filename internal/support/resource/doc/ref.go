@@ -1,11 +1,7 @@
 package doc
 
 import (
-	"bytes"
-	"html/template"
 	"net/http"
-	"strings"
-	"time"
 
 	"github.com/alan-b-lima/almodon/ui/web"
 )
@@ -15,41 +11,35 @@ type Ref struct {
 	Docs  []*Doc
 
 	mux *http.ServeMux
-	buf bytes.Reader
 }
 
-func NewRef(title string, docs []*Doc) (*Ref, error) {
+func NewRef(glob *web.Glob, title string, docs []*Doc) (*Ref, error) {
 	ref := Ref{
 		Title: title,
 		Docs:  docs,
 	}
 
-	var buf bytes.Buffer
-	if err := ref_tmpl.Execute(&buf, ref); err != nil {
+	tmpl, err := glob.Parse("index", "doc/ref")
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := web.MakePage(tmpl, ref)
+	if err != nil {
 		return nil, err
 	}
 
 	mux := http.NewServeMux()
+
 	for _, doc := range docs {
 		mux.Handle("/docs/"+doc.Path, doc)
 	}
-	mux.HandleFunc("/docs/", ref.home)
+	mux.Handle("/docs/", page)
 
 	ref.mux = mux
-	ref.buf = *bytes.NewReader(buf.Bytes())
 	return &ref, nil
-}
-
-func (d *Ref) home(w http.ResponseWriter, r *http.Request) {
-	http.ServeContent(w, r, ".html", time.Time{}, &d.buf)
 }
 
 func (d *Ref) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	d.mux.ServeHTTP(w, r)
 }
-
-var ref_tmpl = template.Must(
-	web.Base().
-		Funcs(template.FuncMap{"lower": strings.ToLower}).
-		Parse(web.MustText("doc/ref")),
-)

@@ -1,10 +1,12 @@
 package doc
 
 import (
+	"errors"
 	"go/doc/comment"
 	"html/template"
-	"slices"
 	"strings"
+
+	"github.com/alan-b-lima/almodon/ui/web"
 )
 
 type EndPoint struct {
@@ -13,28 +15,28 @@ type EndPoint struct {
 	Body         template.HTML
 }
 
-func NewEndPoint(text string) (EndPoint, bool) {
+var ErrNotRoute = errors.New("route not found")
+
+func NewEndPoint(text string) (EndPoint, error) {
 	var p comment.Parser
 	doc := p.Parse(text).Content
 
 	method, path, index := find_route(doc)
 	if index < 0 {
-		return EndPoint{}, false
+		return EndPoint{}, ErrNotRoute
 	}
 
-	doc = slices.Delete(doc, index, index+1)
-
-	var b strings.Builder
-	if err := parse_content(&b, doc); err != nil {
-		return EndPoint{}, false
+	html, err := web.GoComment(text)
+	if err != nil {
+		return EndPoint{}, err
 	}
 
 	return EndPoint{
 		Method:  method,
 		Path:    path,
 		RouteID: route_id(method, path),
-		Body:    template.HTML(b.String()),
-	}, true
+		Body:    html,
+	}, nil
 }
 
 func route_id(method, path string) string {
