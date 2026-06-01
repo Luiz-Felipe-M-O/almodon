@@ -1,0 +1,71 @@
+{{ define "head" }}
+<link rel="stylesheet" href="/toolkit/style/about.css">
+{{ end }}
+
+{{ define "body-id" }}about{{ end }}
+
+{{ define "main" }}
+<main>
+    <div class="content">
+        <header class="hero">
+            <h1>Almodon</h1>
+            <h2>Sistema de Gestão do Almoxarifado Interno da Odontologia na UFVJM</h2>
+        </header>
+
+        <hr>
+
+        <section class="descript">
+            <h2 class="text subtitle">Do Projeto</h2>
+
+            <p>O Almodon é um sistema de gestão que tem como objetivo auxiliar as atividades desenvolvidas pelo Almoxarifado interno da Odontologia na UFVJM...</p>
+        </section>
+
+        <section class="contributors">
+            <h2 class="text subtitle">Contribuidores</h2>
+
+            <ul class="contributor-list">
+                {{ range .Contributors }}
+                <li>
+                    <a href="https://github.com/{{ .GitHub }}" target="_blank" rel="noopener noreferrer" class="contributor">
+                        <img src="https://github.com/{{ .GitHub }}.png" alt="{{ .GitHub }} profile" class="avatar">
+                        <h3 class="name">{{ .Name }}</h3>
+                        <span class="github">@{{ .GitHub }}</span>
+                    </a>
+                </li>
+                {{ end }}
+            </ul>
+        </section>
+
+        <hr>
+    </div>
+
+    <footer>
+        <section>
+            <a href="https://github.com/alan-b-lima/almodon" target="_blank" rel="noopener noreferrer" class="repository">
+                <img class="badge" src="/toolkit/assets/little-chick.svg" alt="Author's badge">
+                <div>
+                    <h3>O Repositório do Almodon</h3>
+                    <h4>no GitHub</h4>
+                </div>
+            </a>
+        </section>
+
+        <hr>
+
+        <section class="associates">
+            {{ range .Associates }}
+            <a href="{{ .HRef }}" target="_blank" rel="noopener noreferrer" class="associate">
+                <img src="{{ .Icon }}" alt="{{ .Name }}">
+            </a>
+            {{ end }}
+        </section>
+
+        <hr>
+
+        <section class="copyright">
+            <h3 class="notice">Copyright &copy; {{ .CopyYear }} Equipe do Almodon.</h3>
+            <p class="license">Esse trabalho está licenciado sob <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="license noopener noreferrer">A Licença GNU Pública Geral v3.0</a>.</p>
+        </section>
+    </footer>
+</main>
+{{ end }}
