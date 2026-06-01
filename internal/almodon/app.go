@@ -16,15 +16,20 @@ type Almodon struct {
 func New() (*Almodon, error) {
 	var a Almodon
 
-	toolkit := web.ToolkitDyn()
-
-	docs, err := domain.Reference()
+	glob, err := web.NewGlobDyn()
 	if err != nil {
 		return nil, err
 	}
 
-	// mount the API last not to handle closing
-	// see [domain.New] for an example
+	toolkit := web.NewToolkitDyn(glob)
+
+	docs, err := domain.Reference(glob)
+	if err != nil {
+		return nil, err
+	}
+
+	// mount the API last not to handle conditinal
+	// closing, see [domain.New] for an example
 	api, err := NewAPI()
 	if err != nil {
 		return nil, err
@@ -43,5 +48,5 @@ func (a *Almodon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Almodon) Close() error {
-	return a.api.bundle.Close()
+	return a.api.Close()
 }

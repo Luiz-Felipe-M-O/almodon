@@ -1,21 +1,21 @@
 package almodon
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/alan-b-lima/almodon/internal/domain"
-	"github.com/alan-b-lima/almodon/pkg/closer"
 )
 
 type API struct {
 	http.ServeMux
-	bundle closer.Bundle
+	*domain.Domain
 }
 
-func NewAPI() (*API, error) {
-	domain, err := domain.New()
+func NewAPI(opts ...domain.Option) (*API, error) {
+	domain, err := domain.New(opts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("domain mounting: %w", err)
 	}
 
 	handlers := map[string]http.Handler{
@@ -26,10 +26,14 @@ func NewAPI() (*API, error) {
 		"users":      domain.Resources.Users,
 	}
 
-	api := &API{bundle: domain.Bundle}
+	api := &API{Domain: domain}
 	for name, handler := range handlers {
 		api.Handle("/api/v1/"+name+"/", http.StripPrefix("/api/v1", handler))
 	}
 
 	return api, nil
+}
+
+func (a *API) Close() error {
+	return a.Bundle.Close()
 }
