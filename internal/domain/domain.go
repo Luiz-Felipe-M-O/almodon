@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/bits"
 	"os"
 
 	"github.com/alan-b-lima/almodon/internal/domain/auth"
@@ -92,6 +93,11 @@ type (
 	}
 )
 
+var (
+	ErrInvalidOptComb = errors.New("invalid option combination")
+	ErrNoRootUser     = errors.New("no root user found in database")
+)
+
 func New(opts ...Option) (*Domain, error) {
 	var bundle closer.Bundle
 	var err error
@@ -102,7 +108,12 @@ func New(opts ...Option) (*Domain, error) {
 		}
 	}(&err)
 
-	db, err := MountSQLiteDB(opts...)
+	opt, err := Condense(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := MountSQLiteDB(opt)
 	if err != nil {
 		return nil, err
 	}
@@ -129,29 +140,21 @@ func New(opts ...Option) (*Domain, error) {
 		Bundle: bundle,
 	}
 
-	opt := Condense(opts...)
-
 	if opt&Structure != 0 {
 		if err = PrepareStructure(db); err != nil {
-			return nil, err
-		}
-	}
-
-	if opt&RootUser != 0 && opt&Interactive != 0 {
-		if err = AssertRootUser(cores.Users); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("prepare structure: %w", err)
 		}
 	}
 
 	if opt&RootUser != 0 {
-		if err = HasRootUser(cores.Users); err != nil {
-			return nil, err
+		if err = AssertRootUser(cores.Users, opt); err != nil {
+			return nil, fmt.Errorf("assert root user: %w", err)
 		}
 	}
 
 	if opt&Publish != 0 {
 		if err = PublishForScheduler(cores.Sessions, cores.Promotions); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("publish for scheduler: %w", err)
 		}
 	}
 
@@ -162,31 +165,46 @@ type Option uint64
 
 const (
 	Structure Option = 1 << iota
-	InMemory
 	RootUser
 	Publish
+
+	InMemory
 	Interactive
 
-	Default = Structure | RootUser | Publish | Interactive
+	_Default = Structure | RootUser | Publish | Interactive
 )
 
-func Condense(opts ...Option) Option {
-	if len(opts) == 0 {
-		return Default
+func Condense(opts ...Option) (Option, error) {
+	switch len(opts) {
+	case 0:
+		return _Default, nil
+	case 1:
+		return opts[0], nil
 	}
 
-	var final Option
+	final := _Default
+
 	for _, opt := range opts {
-		final |= opt
+		switch bits.OnesCount64(uint64(opt)) {
+		case 1:
+			final |= opt
+		case 63:
+			final &= opt
+		default:
+			return 0, ErrInvalidOptComb
+		}
 	}
 
-	return final
+	return final, nil
 }
 
 const SQLiteDriver = "sqlite3"
 
 func MountSQLiteDB(opts ...Option) (*sql.DB, error) {
-	opt := Condense(opts...)
+	opt, err := Condense(opts...)
+	if err != nil {
+		return nil, err
+	}
 
 	if opt&InMemory != 0 {
 		return OpenSQLiteDBInMemory()
@@ -284,7 +302,6 @@ func OpenSQLiteDBInMemory() (*sql.DB, error) {
 
 var preconditions = [...]string{
 	"PRAGMA foreign_keys = ON",
-	"PRAGMA foreign_key_check",
 }
 
 var scripts = [...]string{
@@ -320,22 +337,18 @@ func PrepareStructure(db *sql.DB) error {
 	return tx.Commit()
 }
 
-var ErrNoRootUser = errors.New("no root user found in database")
-
-func HasRootUser(users user.Service) error {
-	ctx := context.TODO()
-
-	_, err := users.GetBySIAPE(ctx, "0000000")
-	if err == user.ErrNotFound {
-		return ErrNoRootUser
+func AssertRootUser(users user.Service, opts ...Option) error {
+	opt, err := Condense(opts...)
+	if err != nil {
+		return err
 	}
 
-	return err
-}
-
-func AssertRootUser(users user.Service) error {
-	if err := HasRootUser(users); err != ErrNoRootUser {
+	if _, err := users.GetBySIAPE(context.TODO(), "0000000"); err != user.ErrNotFound {
 		return err
+	}
+
+	if opt&Interactive == 0 {
+		return ErrNoRootUser
 	}
 
 	user := user.Create{
@@ -354,7 +367,12 @@ func AssertRootUser(users user.Service) error {
 	fmt.Print("Insert name for root user: ")
 	scanner := bufio.NewScanner(os.Stdin)
 	if !scanner.Scan() {
-		return scanner.Err()
+		err := scanner.Err()
+		if err == io.EOF {
+			return io.ErrUnexpectedEOF
+		}
+
+		return err
 	}
 
 	user.Name = scanner.Text()
