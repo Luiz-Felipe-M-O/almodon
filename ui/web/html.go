@@ -21,31 +21,29 @@ func ParseChain(tmpl *template.Template, texts ...string) (*template.Template, e
 	return tmpl, nil
 }
 
-type Page struct {
-	build  time.Time
-	reader bytes.Reader
+type Content struct {
+	Ext   string
+	Build time.Time
+	bytes []byte
 }
 
-func MakePage(tmpl *template.Template, data any) (*Page, error) {
+func NewContent(ext string, b []byte) *Content {
+	return &Content{Ext: ext, Build: time.Now(), bytes: b}
+}
+
+func (p *Content) ReadSeeker() io.ReadSeeker {
+	return bytes.NewReader(p.bytes)
+}
+
+func (p *Content) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	http.ServeContent(w, r, p.Ext, p.Build, p.ReadSeeker())
+}
+
+func MakePage(tmpl *template.Template, data any) (*Content, error) {
 	var b bytes.Buffer
 	if err := tmpl.Execute(&b, data); err != nil {
 		return nil, err
 	}
 
-	return &Page{
-		build:  time.Now(),
-		reader: *bytes.NewReader(b.Bytes()),
-	}, nil
-}
-
-func (p *Page) Build() time.Time {
-	return p.build
-}
-
-func (p *Page) ReadSeeker() io.ReadSeeker {
-	return &p.reader
-}
-
-func (p *Page) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	http.ServeContent(w, r, ".html", p.build, &p.reader)
+	return NewContent(".html", b.Bytes()), nil
 }
