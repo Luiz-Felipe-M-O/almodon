@@ -43,12 +43,15 @@ func NewGlobFS(fsys fs.FS, root string) (*Glob, error) {
 }
 
 func NewGlob() (*Glob, error) {
-	return NewGlobFS(pages, "dist/pages")
+	return NewGlobFS(pages, "pages")
 }
 
 func NewGlobDyn() (*Glob, error) {
-	return NewGlobFS(nil, "./ui/web/dist/pages")
+	return NewGlobFS(nil, "./ui/web/pages")
 }
+
+//go:embed pages
+var pages embed.FS
 
 func (g *Glob) Text(name string) string {
 	text, err := g.texts.Read(name)
@@ -128,9 +131,6 @@ func (g *Glob) Func(name string, fn any) *Glob {
 }
 
 var exts = [...]string{".html", ".gohtml", ".tmpl"}
-
-//go:embed dist/pages
-var pages embed.FS
 
 type reader struct {
 	fsys  fs.FS
