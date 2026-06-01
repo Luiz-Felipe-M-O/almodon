@@ -1,7 +1,10 @@
 // Package closer implements functionality for managing and closing resources.
 package closer
 
-import "errors"
+import (
+	"errors"
+	"slices"
+)
 
 // Closer is an interface that defines a method for closing resources.
 type Closer interface {
@@ -57,27 +60,23 @@ func (b *Bundle) Reset() {
 // Close calls the Close method on all Closers in the Bundle and returns any
 // errors that occur.
 //
-// The bundle will conclude all closers even if some of them return an error.
-// The errors will be collected and returned as a single error using
+// The bundle will try to close all closers even if some of them return an
+// error. The errors will be collected and returned as a single error using
 // [errors.Join].
 //
 // All [Closer]s that have been successfully closed will be removed from the
 // Bundle, while those that returned an error will remain in the Bundle.
 func (b *Bundle) Close() error {
-	errs := make([]error, 0, len(b.cleanup))
+	var errs []error
 
-	var i int
-	for _, closer := range b.cleanup {
+	b.cleanup = slices.DeleteFunc(b.cleanup, func(closer Closer) bool {
 		if err := closer.Close(); err != nil {
 			errs = append(errs, err)
-		} else {
-			b.cleanup[i] = closer
-			i++
+			return false
 		}
-	}
 
-	clear(b.cleanup[i:])
-	b.cleanup = b.cleanup[:i]
+		return true
+	})
 
 	return errors.Join(errs...)
 }
@@ -91,7 +90,7 @@ func (b *Bundle) Close() error {
 // error. The errors will be collected and returned as a single error using
 // [errors.Join].
 func CloseMany(a ...any) error {
-	errs := make([]error, 0, len(a))
+	var errs []error
 
 	for _, v := range a {
 		if closer, ok := v.(Closer); ok {
