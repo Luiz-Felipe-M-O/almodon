@@ -171,15 +171,22 @@ const (
 	InMemory
 	Interactive
 
-	_Default = Structure | RootUser | Publish | Interactive
+	_Built   = 1 << 63
+	_Default = _Built | Structure | RootUser | Publish | Interactive
 )
 
 func Condense(opts ...Option) (Option, error) {
 	switch len(opts) {
 	case 0:
 		return _Default, nil
+
 	case 1:
-		return opts[0], nil
+		opt := opts[0]
+		if opt&_Built == 0 {
+			return 0, ErrInvalidOptComb
+		}
+
+		return opt, nil
 	}
 
 	final := _Default
