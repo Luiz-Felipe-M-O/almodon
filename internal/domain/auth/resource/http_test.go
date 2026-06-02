@@ -3,7 +3,9 @@ package auths_test
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -20,8 +22,6 @@ func init() {
 		panic(err)
 	}
 
-	users := api.Cores.Users
-
 	root_user := user.Create{
 		SIAPE:    "0000000",
 		Name:     "Raiz",
@@ -30,19 +30,33 @@ func init() {
 		Role:     auth.Maintainer,
 	}
 
-	if _, err := users.Create(context.Background(), root_user); err != nil {
+	_, err = api.Cores.Users.Create(context.Background(), root_user)
+	if err != nil {
 		panic(err)
 	}
 
-	go http.ListenAndServe(":4545", api)
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		panic(err)
+	}
+
+	url := url.URL{
+		Scheme: "http",
+		Host:   ln.Addr().String(),
+	}
+
+	Origin = url.String()
+	go http.Serve(ln, api)
 
 	time.Sleep(300 * time.Millisecond)
 }
 
+var Origin string
+
 func TestLogin(t *testing.T) {
 	req, err := http.NewRequest(
 		http.MethodPost,
-		"http://localhost:4545/api/v1/auth/",
+		Origin+"/api/v1/auth/",
 		strings.NewReader(`{"siape":"0000000","password":"12345678"}`),
 	)
 	if err != nil {
@@ -77,7 +91,7 @@ func TestLogin(t *testing.T) {
 func TestLoginWithInvalidPassword(t *testing.T) {
 	req, err := http.NewRequest(
 		http.MethodPost,
-		"http://localhost:4545/api/v1/auth/",
+		Origin+"/api/v1/auth/",
 		strings.NewReader(`{"siape":"0000000","password":"senha-incorreta"}`),
 	)
 	if err != nil {
@@ -110,7 +124,7 @@ func TestLogout(t *testing.T) {
 
 	login_req, err := http.NewRequest(
 		http.MethodPost,
-		"http://localhost:4545/api/v1/auth/",
+		Origin+"/api/v1/auth/",
 		strings.NewReader(`{"siape":"0000000","password":"12345678"}`),
 	)
 	if err != nil {
@@ -142,7 +156,7 @@ func TestLogout(t *testing.T) {
 
 	logout_req, err := http.NewRequest(
 		http.MethodDelete,
-		"http://localhost:4545/api/v1/auth/",
+		Origin+"/api/v1/auth/",
 		nil,
 	)
 	if err != nil {
