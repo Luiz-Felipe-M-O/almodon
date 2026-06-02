@@ -42,7 +42,22 @@ Issues são usadas como bilhetes de desenvolvimento. Tarefa devem ser postadas, 
 
 Uma vez postada, a issue vai para o `Backlog` do projeto, onde é possível associar uma data limite e, se acreditar passível, passá-las para o estado `Ready`. Quando tomar responsabilidade sobre uma issue, comente-a brevemente e a mova para `In Progress`, assim que pronto, com um pull request associado, move-la para `In Review`, onde irá aguardar revisão.
 
-### 4. Formato de pull requests
+### 4. Formato das branches
+
+Com exceção da branch `master` e possíveis auxiliares futuras, ou seja, toda _one-off_ branch deve ser nomeadas na forma `<tipo> / <unidade>`.
+
+O `<tipo>` deve ser um dos a seguir:
+
+- `feat`: para a adição de uma nova funcionalidade
+- `doc`: para a documentação de funcionalidades
+- `fix`: para a correção de bugs
+- `test`: para a adição ou modificação de testes
+- `refactor`: para mudanças no código que não adicionam funcionalidades ou consertam bugs
+- `style`: para mudanças que não afetam o significado do código (espaços em branco, formatação, etc)
+
+E a `<unidade>` é algo que descreve o que está sendo feito, como: `e2e-user` para testes ponta-a-ponta (end-to-end) do recurso de usuário; ou `stock` para a implementação do estoque.
+
+### 5. Formato de pull requests
 
 Pull requests devem possuir um título e uma descrição. O título deve seguir o mesmo formato dos títulos das issues, ou seja, começar com um verbo no infinitivo, em português, e ser uma descrição curta do pull request.
 
