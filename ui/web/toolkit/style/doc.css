@@ -47,7 +47,8 @@
         }
 
         ol {
-            list-style: armenian;
+            list-style: normal;
+            margin-inline-start: 2rem;
         }
 
         ul {
@@ -78,10 +79,16 @@
         }
 
         nav {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            font-weight: bold;
+            & {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                font-weight: bold;
+            }
+
+            menu {
+                list-style: none;
+            }
         }
 
         main {
@@ -103,36 +110,24 @@
                 & {
                     --method-color: oklch(.70 0.1 178);
 
-                    border-radius: 10rem;
+                    border-radius: var(--radius-circle);
                     text-transform: uppercase;
+                    text-box: trim-end text alphabetic;
+                    padding: .25rem .5rem;
                     font-weight: bold;
-                    padding: .25rem .5rem .125rem .5rem;
                     font-size: .75rem;
+
 
                     background-color: oklch(from var(--method-color) .75 C H);
                     border: 1px solid oklch(from var(--method-color) .40 C H);
                     color: oklch(from var(--method-color) .40 C H);
                 }
 
-                &.get {
-                    --method-color: oklch(.40 0.1 178);
-                }
-
-                &.post {
-                    --method-color: oklch(.40 0.1 230);
-                }
-
-                &.patch {
-                    --method-color: oklch(.40 0.1 98);
-                }
-
-                &.put {
-                    --method-color: oklch(.40 0.1 278);
-                }
-
-                &.delete {
-                    --method-color: oklch(.40 0.1 17);
-                }
+                &.get    { --method-color: oklch(.40 0.1 178); }
+                &.post   { --method-color: oklch(.40 0.1 230); }
+                &.patch  { --method-color: oklch(.40 0.1 98); }
+                &.put    { --method-color: oklch(.40 0.1 278); }
+                &.delete { --method-color: oklch(.40 0.1 17); }
             }
 
             .path {
@@ -151,6 +146,7 @@
                     flex-direction: column;
                     border-radius: var(--radius-round);
                     border: var(--border) var(--color-primary-75);
+                    list-style: none;
                     padding: 1rem;
                     gap: 1rem;
                 }
@@ -182,9 +178,7 @@
                         font-size: .75rem;
                     }
                 }
-
             }
-
         }
 
         #section {
@@ -267,6 +261,7 @@
             & {
                 display: flex;
                 flex-direction: column;
+                list-style: none;
                 width: 100%;
             }
 
@@ -322,50 +317,5 @@
         .empty {
             height: stretch;
         }
-    }
-}
-
-#almodon #icons {
-    & {
-        display: flex;
-        padding: 1rem 2rem;
-        flex-direction: column;
-    }
-
-    .icon-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, clamp(3rem, 100%, 10dvw));
-        justify-content: space-around;
-        gap: 1rem;
-    }
-
-    .icon-box {
-        & {
-            border-radius: var(--radius-round);
-            border: var(--border) var(--color-primary-75);
-        }
-
-        .icon figure {
-            & {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                padding: .5rem 1rem;
-            }
-
-            img {
-                width: 1.5rem;
-            }
-        }
-
-        .context {
-            border-top: var(--border) var(--color-primary-75);
-            border-radius: 0 0 var(--radius-round) var(--radius-round);
-            background-color: var(--color-primary-100);
-        }
-    }
-
-    .empty {
-        height: 100%;
     }
 }
