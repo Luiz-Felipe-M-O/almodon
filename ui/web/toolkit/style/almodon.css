@@ -386,7 +386,7 @@
         height: 100dvh;
     }
 
-    header:not([class]) {
+    >header {
         & {
             display: grid;
             grid-template-columns: auto 1fr;
@@ -416,6 +416,45 @@
                 color: var(--color);
                 line-height: 1;
             }
+        }
+    }
+
+    >main {
+        view-transition-name: main-content;
+    }
+}
+
+@view-transition {
+    navigation: auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    ::view-transition-group(main-content) {
+        animation-duration: .5s;
+        animation-timing-function: ease-in-out;
+    }
+
+    ::view-transition-old(main-content) {
+        animation-name: slide-out;
+    }
+
+    ::view-transition-new(main-content) {
+        animation-name: slide-in;
+    }
+
+    @keyframes slide-out {
+        50% {
+            scale: .1;
+        }
+
+        100% {
+            translate: -100dvw 0;
+        }
+    }
+
+    @keyframes slide-in {
+        0% {
+            translate: 100dvw 0;
         }
     }
 }
