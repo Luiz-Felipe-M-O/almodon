@@ -21,11 +21,10 @@ machine64() {
 		return 0
 	fi
 
-	case $(uname -m 2>/dev/null || printf '') in
-		*64|aarch64|arm64|amd64|x86_64|ppc64|ppc64le|s390x|riscv64)
-			return 0
-			;;
-	esac
+	arch=$(uname -m 2>/dev/null || printf '')
+	if [[ "$arch" =~ (64|^(aarch64|arm64|amd64|x86_64|ppc64|ppc64le|s390x|riscv64))$ ]]; then
+		return 0
+	fi
 
 	return 1
 }
@@ -103,5 +102,5 @@ export CGO_ENABLED=1
 mkdir  -p ./bin || fatal 'failed to create bin directory'
 go     build -o "$binary_path" -trimpath -ldflags='-s -w -linkmode external -extldflags "-static"' ./cmd/main.go || fatal 'static build failed'
 
-log "build completed successfully: $binary_path"
+log "installation completed successfully!"
 
