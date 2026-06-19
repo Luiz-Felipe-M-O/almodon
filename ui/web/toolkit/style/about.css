@@ -64,6 +64,28 @@
             }
         }
 
+        figure {
+            & {
+                position: relative;
+            }
+
+            &::before {
+                content: "";
+                display: block;
+                position: absolute;
+                background-image: url(/toolkit/assets/banner.png);
+                background-size: cover;
+                filter: blur(16px);
+                height: 100%;
+                width: 100%;
+                z-index: -1;
+            }
+
+            img {
+                border-radius: var(--radius-round);
+            }
+        }
+
         section {
             display: grid;
             gap: 1rem;
