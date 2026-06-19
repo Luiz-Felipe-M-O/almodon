@@ -2,6 +2,10 @@
 
 Almodon é um sistemas de gestão que tem como objetivo auxiliar as atividades desenvolvidas pelo Almoxarifado interno da Odontologia na UFVJM.
 
+![Banner do Almodon](./ui/web/toolkit/assets/banner.png)
+
+_Ilustração dos Almodontes por [Rafael Gomes](https://github.com/rafleGomes), licenciado adjuntamente do Software Almodon._
+
 ## Contribuidores
 
 - Alan Barbosa Lima                   [@alan-b-lima](https://github.com/alan-b-lima)
