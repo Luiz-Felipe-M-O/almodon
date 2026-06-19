@@ -5,48 +5,30 @@ import (
 	"net/http"
 )
 
-type Toolkit struct {
-	http.ServeMux
-}
+type Toolkit struct{ http.ServeMux }
 
-type Script struct {
-	http.Handler
-}
-
-//go:embed toolkit script
+//go:embed toolkit
 var source embed.FS
 
 func NewToolkit(glob *Glob) *Toolkit {
 	var tk Toolkit
 	tk.Handle("/toolkit/", http.FileServerFS(source))
-
-	if glob != nil {
-		toolkit_example(glob, &tk.ServeMux)
-	}
+	style_example(glob, &tk.ServeMux)
 	return &tk
 }
 
 func NewToolkitDyn(glob *Glob) *Toolkit {
 	var tk Toolkit
 	tk.Handle("/toolkit/", http.StripPrefix("/toolkit", http.FileServer(http.Dir("./ui/web/toolkit"))))
-
-	if glob != nil {
-		toolkit_example(glob, &tk.ServeMux)
-	}
+	style_example(glob, &tk.ServeMux)
 	return &tk
 }
 
-func NewScript() *Script {
-	return &Script{Handler: http.FileServerFS(source)}
-}
-
-func NewScriptDyn() *Script {
-	return &Script{
-		Handler: http.StripPrefix("/script", http.FileServer(http.Dir("./ui/web/script"))),
+func style_example(glob *Glob, mux *http.ServeMux) {
+	if glob == nil {
+		return
 	}
-}
 
-func toolkit_example(glob *Glob, mux *http.ServeMux) {
 	tmpl, err := glob.Parse("index", "toolkit")
 	if err != nil {
 		return
@@ -57,5 +39,5 @@ func toolkit_example(glob *Glob, mux *http.ServeMux) {
 		return
 	}
 
-	mux.Handle("/toolkit/{$}", page)
+	mux.Handle("/toolkit/style/{$}", page)
 }

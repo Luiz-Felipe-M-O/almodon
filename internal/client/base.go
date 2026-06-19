@@ -19,11 +19,9 @@ func New() (*Client, error) {
 	}
 
 	toolkit := web.NewToolkitDyn(glob)
-	script := web.NewScriptDyn()
 
 	var client Client
 	client.Handle("/toolkit/", toolkit)
-	client.Handle("/script/", script)
 
 	docs, err := domain.Reference(glob)
 	if err != nil {
