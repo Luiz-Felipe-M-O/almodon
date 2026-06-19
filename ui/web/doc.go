@@ -1,121 +1,139 @@
 package web
 
 import (
+	"fmt"
 	"go/doc/comment"
 	"html/template"
-	"io"
 	"strings"
 )
 
 func GoComment(text string) (template.HTML, error) {
-	var p comment.Parser
-	doc := p.Parse(text)
+	var parser comment.Parser
+	doc := parser.Parse(text)
 
+	var printer printer
+	return printer.html(doc), nil
+}
+
+type printer struct {
+	comment.Printer
+}
+
+func (p *printer) html(doc *comment.Doc) template.HTML {
 	var b strings.Builder
-	if err := parse_content(&b, doc.Content); err != nil {
-		return "", nil
-	}
-
-	return template.HTML(b.String()), nil
+	p.content(&b, doc.Content)
+	return template.HTML(b.String())
 }
 
-func parse_content(b *strings.Builder, doc []comment.Block) error {
-	for _, block := range doc {
-		switch block := block.(type) {
-		case *comment.Code:
-			if err := execute(b, `<pre><code>{{ . }}</code></pre>`, block.Text); err != nil {
-				return err
-			}
+func (p *printer) content(b *strings.Builder, content []comment.Block) {
+	for _, block := range content {
+		p.block(b, block)
+	}
+}
 
-		case *comment.Heading:
-			b.WriteString(`<h3>`)
-			if err := parse_text(b, block.Text); err != nil {
-				return err
-			}
-			b.WriteString(`</h3>`)
+func (p *printer) block(b *strings.Builder, block comment.Block) {
+	switch block := block.(type) {
+	default:
+		p.escape(b, fmt.Sprintf("?%T", block))
 
-		case *comment.Paragraph:
-			b.WriteString(`<p>`)
-			if err := parse_text(b, block.Text); err != nil {
-				return err
-			}
-			b.WriteString(`</p>`)
+	case *comment.Paragraph:
+		b.WriteString(`<p>`)
+		p.text(b, block.Text)
+		b.WriteString(`</p>`)
 
-		case *comment.List:
-			if err := parse_list(b, block); err != nil {
-				return err
-			}
+	case *comment.Code:
+		b.WriteString(`<pre><code>`)
+		p.escape(b, block.Text)
+		b.WriteString(`</code></pre>`)
+
+	case *comment.Heading:
+		h := '0' + p.headingLevel()
+
+		b.WriteString(`<h`)
+		b.WriteByte(h)
+		if id := p.headingID(block); id != "" {
+			b.WriteString(` id="`)
+			p.escape(b, id)
+			b.WriteString(`"`)
 		}
-	}
+		b.WriteString(`>`)
 
-	return nil
+		p.text(b, block.Text)
+
+		b.WriteString(`</h`)
+		b.WriteByte(h)
+		b.WriteString(`>`)
+
+	case *comment.List:
+		if len(block.Items) == 0 {
+			break
+		}
+
+		kind := `ol>`
+		if block.Items[0].Number == "" {
+			kind = `ul>`
+		}
+
+		b.WriteString(`<`)
+		b.WriteString(kind)
+
+		for _, item := range block.Items {
+			b.WriteString(`<li>`)
+			p.content(b, item.Content)
+			b.WriteString(`</li>`)
+		}
+
+		b.WriteString(`</`)
+		b.WriteString(kind)
+	}
 }
 
-func parse_text(b *strings.Builder, text []comment.Text) error {
+func (p *printer) text(b *strings.Builder, text []comment.Text) {
 	for _, text := range text {
 		switch text := text.(type) {
 		case comment.Plain:
-			b.WriteString(string(text))
+			p.escape(b, string(text))
 
 		case comment.Italic:
-			if err := execute(b, `<em>{{ . }}</em>`, string(text)); err != nil {
-				return err
-			}
+			b.WriteString(`<i>`)
+			p.escape(b, string(text))
+			b.WriteString(`</i>`)
 
 		case *comment.Link:
-			if err := execute(b, `<a href="{{ . }}">`, text.URL); err != nil {
-				return err
-			}
-			if err := parse_text(b, text.Text); err != nil {
-				return err
-			}
+			b.WriteString(`<a href="`)
+			p.escape(b, text.URL)
+			b.WriteString(`">`)
+			p.text(b, text.Text)
 			b.WriteString(`</a>`)
 
 		case *comment.DocLink:
-			if err := parse_text(b, text.Text); err != nil {
-				return err
-			}
+			p.text(b, text.Text)
 		}
 	}
-
-	return nil
 }
 
-func parse_list(b *strings.Builder, list *comment.List) error {
-	if len(list.Items) == 0 {
-		return nil
+func (p *printer) headingLevel() byte {
+	if p.HeadingLevel <= 0 || 6 < p.HeadingLevel {
+		return 3
 	}
-
-	ordered := list.Items[0].Number != ""
-
-	if ordered {
-		b.WriteString(`<ol>`)
-	} else {
-		b.WriteString(`<ul>`)
-	}
-
-	for _, item := range list.Items {
-		b.WriteString(`<li>`)
-		if err := parse_content(b, item.Content); err != nil {
-			return err
-		}
-		b.WriteString(`</li>`)
-	}
-
-	if ordered {
-		b.WriteString(`</ol>`)
-	} else {
-		b.WriteString(`</ul>`)
-	}
-
-	return nil
+	return byte(p.HeadingLevel)
 }
 
-func execute(w io.Writer, text string, data any) error {
-	tmpl, err := template.New("").Parse(text)
-	if err != nil {
-		return err
+func (p *printer) headingID(h *comment.Heading) string {
+	if p.HeadingID == nil {
+		return h.DefaultID()
 	}
+	return p.HeadingID(h)
+}
 
-	return tmpl.Execute(w, data)
+var escaper = strings.NewReplacer(
+	`&`, `&amp;`,
+	`'`, `&apos;`,
+	`"`, `&quot;`,
+	`<`, `&lt;`,
+	`>`, `&gt;`,
+)
+
+func (p *printer) escape(b *strings.Builder, s string) {
+	escaper.WriteString(b, s)
 }
