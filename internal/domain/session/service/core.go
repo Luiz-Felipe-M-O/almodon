@@ -25,95 +25,74 @@ func New(sessions session.Store, scheduler *scheduler.Scheduler) *Core {
 	}
 }
 
-const _MaxAge = 1 * time.Hour
-
 func (c *Core) Get(ctx context.Context, token session.Token) (session.Result, error) {
-	res, err := c.Sessions.Get(ctx, token)
+	rec, err := c.Sessions.Get(ctx, token)
 	if err != nil {
 		return session.Result{}, err
 	}
 
-	if time.Now().After(res.Expires) {
+	if session.Expired(rec.HardDeadline, rec.IdleDeadline) {
 		return session.Result{}, session.ErrNotFound
 	}
 
-	return session.Result(res), nil
+	return session.Result(rec), nil
 }
 
-// TODO: verify validity of [_MaxAge] and turn it to an internal error
 func (c *Core) Create(ctx context.Context, req session.Create) (session.Result, error) {
-	max_age := _MaxAge
-	if v, ok := req.MaxAge.Unwrap(); ok {
-		max_age = v
-	}
-
-	var rec session.CreateRecord
+	var rec session.Entity
 	err := problem.Join(
-		service.Set(&rec.Renewed, 0, session.ProcessRenewed),
-		service.Set(&rec.Expires, max_age, session.ProcessMaxAge),
+		service.Set(&rec.IdleDeadline, session.IdleTimeout, session.ProcessIdleTimeout),
 	)
 	if err != nil {
 		return session.Result{}, session.ErrCreate.Cause(err).Make()
 	}
 
-	rec.User = req.User
+	now := time.Now()
 	rec.Token = session.NewToken()
-	rec.Created = time.Now()
+	rec.User = req.User
+	rec.PasswordVerified = now
 
 	err = c.Sessions.RunTx(ctx, func(store session.Store) error {
-		s, err := store.GetByUser(ctx, req.User)
-		if err != session.ErrNotFound {
-			if err != nil {
-				return err
-			}
-
-			if err := store.Delete(ctx, s.Token); err != nil {
-				return err
-			}
+		err = store.DeleteByUser(ctx, rec.User)
+		if err != nil {
+			return err
 		}
-
 		return store.Create(ctx, rec)
 	})
+
 	if err != nil {
 		return session.Result{}, err
 	}
 
-	c.flush_at(rec.Expires)
+	c.scheduleCleanup(rec.HardDeadline)
 
 	return session.Result(rec), nil
 }
 
-// TODO: verify validity of _MaxAge and turn it to an internal error
-func (c *Core) Update(ctx context.Context, token session.Token, req session.Update) error {
-	max_age := _MaxAge
-	if v, ok := req.MaxAge.Unwrap(); ok {
-		max_age = v
+func (c *Core) ConfirmPassword(ctx context.Context, token session.Token) error {
+	if _, err := c.Get(ctx, token); err != nil {
+		return err
 	}
 
-	var expires time.Time
-	err := c.Sessions.RunTx(ctx, func(store session.Store) error {
-		s, err := store.Get(ctx, token)
-		if err != nil {
-			return err
-		}
+	return c.Sessions.UpdatePasswordVerified(ctx, token, time.Now())
+}
 
-		var rec session.UpdateRecord
-		err = problem.Join(
-			service.Set(&rec.Renewed, s.Renewed, session.ProcessRenewed),
-			service.Set(&rec.Expires, max_age, session.ProcessMaxAge),
-		)
-		if err != nil {
-			return session.ErrUpdate.Cause(err).Make()
-		}
-
-		expires = rec.Expires
-		return c.Sessions.Update(ctx, token, rec)
-	})
+func (c *Core) Update(ctx context.Context, token session.Token) error {
+	rec, err := c.Sessions.Get(ctx, token)
 	if err != nil {
 		return err
 	}
 
-	c.flush_at(expires)
+	if session.Expired(rec.HardDeadline, rec.IdleDeadline) {
+		return session.ErrNotFound
+	}
+
+	updateRec := time.Now().Add(session.IdleTimeout)
+
+	if err := c.Sessions.UpdateActivity(ctx, token, updateRec); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -133,14 +112,14 @@ func (c *Core) Publish(ctx context.Context) error {
 	}
 
 	for _, rec := range recs {
-		c.flush_at(rec.Expires)
+		c.scheduleCleanup(rec.HardDeadline)
 	}
 
 	return nil
 }
 
-func (c *Core) flush_at(expires time.Time) {
+func (c *Core) scheduleCleanup(expiresAt time.Time) {
 	c.Scheduler.Post(func() {
-		c.Sessions.DeleteExpired(context.TODO(), expires)
-	}, expires)
+		_ = c.Sessions.DeleteExpired(context.Background(), expiresAt)
+	}, expiresAt)
 }
