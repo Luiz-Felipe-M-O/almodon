@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/alan-b-lima/almodon/internal/domain/session"
-	"github.com/alan-b-lima/almodon/internal/support/service"
 
-	"github.com/alan-b-lima/pkg/problem"
 	"github.com/alan-b-lima/pkg/scheduler"
 )
 
@@ -39,21 +37,16 @@ func (c *Core) Get(ctx context.Context, token session.Token) (session.Result, er
 }
 
 func (c *Core) Create(ctx context.Context, req session.Create) (session.Result, error) {
-	var rec session.Entity
-	err := problem.Join(
-		service.Set(&rec.IdleDeadline, session.IdleTimeout, session.ProcessIdleTimeout),
-	)
-	if err != nil {
-		return session.Result{}, session.ErrCreate.Cause(err).Make()
+	rec := session.Entity{
+		Token:        session.NewToken(),
+		User:         req.User,
+		HardDeadline: time.Now().Add(session.HardTimeout),
+		IdleDeadline: time.Now().Add(session.IdleTimeout),
+		PasswordVerified: time.Now(), 
 	}
 
-	now := time.Now()
-	rec.Token = session.NewToken()
-	rec.User = req.User
-	rec.PasswordVerified = now
-
-	err = c.Sessions.RunTx(ctx, func(store session.Store) error {
-		err = store.DeleteByUser(ctx, rec.User)
+	err := c.Sessions.RunTx(ctx, func(store session.Store) error {
+		err := store.DeleteByUser(ctx, rec.User)
 		if err != nil {
 			return err
 		}
